@@ -1,0 +1,43 @@
+# Kanby — docker-compose prêt à l'emploi
+# Lancement : docker compose up -d
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kanby}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kanby}
+      POSTGRES_DB: ${POSTGRES_DB:-kanby}
+    volumes:
+      - kanby-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kanby}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-kanby}:${POSTGRES_PASSWORD:-kanby}@db:5432/${POSTGRES_DB:-kanby}?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-2592000}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      # Auto-création du compte admin au premier démarrage :
+      AUTO_ADMIN_ON_BOOT: ${AUTO_ADMIN_ON_BOOT:-true}
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@kanby.local}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-changeme123}
+      DEFAULT_ADMIN_NAME: ${DEFAULT_ADMIN_NAME:-Administrateur}
+      # (Optionnel) le premier utilisateur inscrit devient admin si aucun
+      # admin par défaut n'est configuré. Désactivé par défaut.
+      AUTO_ADMIN_FIRST: ${AUTO_ADMIN_FIRST:-false}
+
+volumes:
+  kanby-db:

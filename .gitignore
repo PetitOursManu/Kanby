@@ -1,0 +1,33 @@
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# env
+.env
+.env.local
+.env*.local
+
+# prisma
+/prisma/migrations/dev.db*
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts.bak
+
+# claude code
+/.claude/

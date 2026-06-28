@@ -63,6 +63,23 @@ includes `mustChangePwd: true`. The mobile client must call
 
 ---
 
+## Health Check
+
+### GET /api/health
+
+Public health check — no auth required. Returns 200 if the app is running.
+
+**Response 200**:
+```json
+{ "status": "ok", "service": "kanby" }
+```
+
+```bash
+curl https://kanby.example.com/api/health
+```
+
+---
+
 ## Auth
 
 ### POST /api/auth/register
@@ -730,6 +747,70 @@ Get a summary of the user's due tasks. Used by Dashy integration.
   "counts": { "dueToday": 1, "overdue": 0, "upcoming": 3, "totalOpen": 5 }
 }
 ```
+
+---
+
+## Dashy Integration Guide
+
+Kanby's API is designed to be fully controllable from an external dashboard
+like [Dashy](https://github.com/PetitOursManu/Dashy). All CRUD operations on
+boards, columns, cards, labels, checklists, comments, and members are available
+via Bearer token auth.
+
+### Setup
+
+1. **Create an API token** on the Kanby instance:
+   - Log in to Kanby → Profile → API tokens → generate a token labeled "Dashy"
+   - Or use the API: `POST /api/auth/token` with `{ email, password, label: "Dashy" }`
+
+2. **Store the token securely** in Dashy's config (encrypted at rest). The
+   token is a `kbt_`-prefixed string, shown only once.
+
+3. **Health check** before making API calls:
+   ```
+   GET /api/health → { "status": "ok" }
+   ```
+
+### Authenticated requests
+
+All requests must include the header:
+```
+Authorization: Bearer kbt_<token>
+```
+
+### Key endpoints for dashboard control
+
+| Action | Method | Endpoint |
+|--------|--------|----------|
+| Verify connection | GET | `/api/health` |
+| Login (get token) | POST | `/api/auth/token` |
+| List boards | GET | `/api/boards` |
+| Board detail (full) | GET | `/api/boards/{id}` |
+| Create board | POST | `/api/boards` |
+| Create card | POST | `/api/cards` |
+| Move card | PATCH | `/api/cards/{id}` (`columnId` + `order`) |
+| Create column | POST | `/api/columns` |
+| Reorder columns | PATCH | `/api/columns/{id}` (`order`) |
+| Task summary (read-only) | GET | `/api/widget/summary` |
+
+### Read-only summary
+
+For a lightweight dashboard widget that only shows task counts (due today,
+overdue, upcoming), use the existing widget endpoint:
+
+```
+GET /api/widget/summary
+Authorization: Bearer kbt_...
+```
+
+This returns a compact JSON summary without the full board payload — ideal for
+a dashboard tile.
+
+### Full control
+
+For full CRUD control (create/edit/delete boards, cards, columns, etc.), use
+the regular API endpoints documented above. The Bearer token gives the same
+access level as the web app — there are no reduced-scope tokens.
 
 ---
 

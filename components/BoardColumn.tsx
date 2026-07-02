@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useDroppable } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { motion, AnimatePresence } from "framer-motion";
 import { DragTiltCard } from "@/components/DragTiltCard";
 import { CardItem } from "@/components/CardItem";
+import { Icon } from "@/components/Icon";
 import { LABEL_COLORS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { ColumnRow, CardRow } from "@/types/api";
@@ -38,6 +40,25 @@ export function BoardColumn({
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(column.name);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const colorBtnRef = useRef<HTMLButtonElement>(null);
+  const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    if (!showColorPicker) {
+      setPickerPos(null);
+      return;
+    }
+    const btn = colorBtnRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const pickerWidth = 176; // w-44
+    const pickerHeight = 120; // approx
+    const left = Math.min(rect.right - pickerWidth, window.innerWidth - pickerWidth - 8);
+    // Open upward if not enough room below, else downward.
+    const openUpward = rect.bottom + pickerHeight > window.innerHeight;
+    const top = openUpward ? rect.top - pickerHeight - 8 : rect.bottom + 4;
+    setPickerPos({ top: Math.max(8, top), left: Math.max(8, left) });
+  }, [showColorPicker]);
 
   // Make the column sortable for horizontal reorder.
   const { attributes, listeners, setNodeRef: setSortableRef, transform, transition, isDragging: colDragging } =
@@ -61,6 +82,7 @@ export function BoardColumn({
 
   return (
     <div
+      id={`col-${column.id}`}
       ref={(node) => {
         setDroppableRef(node);
         setSortableRef(node);
@@ -70,23 +92,22 @@ export function BoardColumn({
         transition,
       }}
       className={cn(
-        "flex w-[86vw] shrink-0 snap-center flex-col rounded-2xl border bg-slate-100/60 dark:bg-slate-800/40 md:w-full md:flex-1",
-        isOver && "ring-2 ring-brand-400/60",
+        "flex h-full w-80 shrink-0 flex-col rounded-xl",
+        "glass-panel",
+        isOver && "ring-2 ring-primary/40",
         colDragging && "opacity-50",
       )}
     >
       {/* Column header */}
-      <div className="flex items-center gap-2 px-3 pt-3">
+      <div className="glass-panel flex items-center gap-2 rounded-t-xl px-4 py-3">
         {canEdit && (
           <button
             {...attributes}
             {...listeners}
-            className="cursor-grab touch-none text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            className="cursor-grab touch-none text-on-surface-variant transition-colors hover:text-primary"
             title="Déplacer la colonne"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01" />
-            </svg>
+            <Icon name="drag_handle" size={14} />
           </button>
         )}
 
@@ -103,24 +124,24 @@ export function BoardColumn({
           <button
             onDoubleClick={() => setEditingName(true)}
             onClick={() => canEdit && setEditingName(true)}
-            className="flex items-center gap-2 text-sm font-semibold"
+            className="flex items-center gap-2 text-sm font-semibold text-on-surface"
             title="Renommer"
           >
             {column.color ? (
               <span
-                className="h-3 w-3 rounded-full ring-2 ring-white dark:ring-slate-800"
+                className="h-3 w-3 rounded-full ring-2 ring-background"
                 style={{ backgroundColor: column.color }}
               />
             ) : (
               <span
                 className={cn(
                   "h-2 w-2 rounded-full",
-                  doneKinds ? "bg-emerald-500" : column.kind === "DOING" ? "bg-amber-500" : "bg-slate-400",
+                  doneKinds ? "bg-emerald-500" : column.kind === "DOING" ? "bg-amber-500" : "bg-on-surface-variant",
                 )}
               />
             )}
             {column.name}
-            <span className="text-xs text-slate-400">{cards?.length ?? 0}</span>
+            <span className="text-xs text-on-surface-variant">{cards?.length ?? 0}</span>
           </button>
         )}
 
@@ -128,19 +149,23 @@ export function BoardColumn({
           {canEdit && (
             <div className="relative">
               <button
+                ref={colorBtnRef}
                 onClick={() => setShowColorPicker((v) => !v)}
-                className="rounded-md p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                className="rounded-md p-1 text-on-surface-variant transition-colors hover:bg-primary/10 hover:text-primary"
                 title="Couleur de la colonne"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 2a14.5 14.5 0 0 0 0 20M12 2a14.5 14.5 0 0 1 0 20" />
-                </svg>
+                <Icon name="color" size={14} />
               </button>
-              {showColorPicker && (
+              {showColorPicker && pickerPos && createPortal(
                 <>
-                  <div className="fixed inset-0 z-30" onClick={() => setShowColorPicker(false)} />
-                  <div className="absolute right-0 top-8 z-40 w-44 card-surface p-3 shadow-lift">
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setShowColorPicker(false)}
+                  />
+                  <div
+                    className="card-surface fixed z-50 w-44 p-3 shadow-lift"
+                    style={{ top: pickerPos.top, left: pickerPos.left }}
+                  >
                     <div className="flex flex-wrap gap-2">
                       {LABEL_COLORS.map((c) => (
                         <button
@@ -151,7 +176,7 @@ export function BoardColumn({
                           }}
                           className={cn(
                             "h-7 w-7 rounded-full ring-2 ring-offset-1",
-                            column.color === c.value ? "ring-slate-900 dark:ring-white" : "ring-transparent",
+                            column.color === c.value ? "ring-on-surface" : "ring-transparent",
                           )}
                           style={{ backgroundColor: c.value }}
                           title={c.name}
@@ -163,29 +188,30 @@ export function BoardColumn({
                         onColorColumn(column.id, null);
                         setShowColorPicker(false);
                       }}
-                      className="mt-2 w-full rounded-md py-1 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"
+                      className="mt-2 w-full rounded-md py-1 text-xs text-on-surface-variant hover:bg-primary/5"
                     >
                       Retirer la couleur
                     </button>
                   </div>
-                </>
+                </>,
+                document.body,
               )}
             </div>
           )}
           {canEdit && (
             <button
               onClick={() => onDeleteColumn(column.id)}
-              className="rounded-md p-1 text-slate-400 hover:bg-slate-200 hover:text-rose-600 dark:hover:bg-slate-700"
+              className="rounded-md p-1 text-on-surface-variant transition-colors hover:bg-error/10 hover:text-error"
               title="Supprimer la colonne"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
+              <Icon name="delete" size={14} />
             </button>
           )}
         </div>
       </div>
 
       {/* Cards */}
-      <div className="flex-1 space-y-2 overflow-y-auto p-2" style={{ minHeight: "60vh" }}>
+      <div className="flex-1 space-y-3 overflow-y-auto p-3">
         <SortableContext items={(cards ?? []).map((c) => c.id)} strategy={verticalListSortingStrategy}>
           <AnimatePresence>
             {(cards ?? []).map((card) => (
@@ -200,7 +226,7 @@ export function BoardColumn({
         {canEdit && (
           <div className="pt-1">
             {adding ? (
-              <div className="card-surface p-2">
+              <div className="glass-elevated rounded-xl p-3">
                 <textarea
                   autoFocus
                   value={newTitle}
@@ -220,9 +246,9 @@ export function BoardColumn({
             ) : (
               <button
                 onClick={() => setAdding(true)}
-                className="flex w-full items-center gap-1.5 rounded-xl px-2 py-2 text-sm text-slate-500 hover:bg-slate-200/70 dark:hover:bg-slate-700/60"
+                className="flex w-full items-center gap-1.5 rounded-xl px-2 py-2 text-sm text-on-surface-variant transition-colors hover:bg-primary/5 hover:text-primary"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" /></svg>
+                <Icon name="add" size={14} />
                 Ajouter une tâche
               </button>
             )}

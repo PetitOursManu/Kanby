@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { Icon } from "@/components/Icon";
 
 export function LoginForm() {
   const router = useRouter();
@@ -42,7 +42,6 @@ export function LoginForm() {
 
   return (
     <AuthShell title="Connexion" subtitle="Heureux de vous revoir sur Kanby.">
-      <ThemeToggle className="absolute right-4 top-4" />
       <form onSubmit={onSubmit} className="space-y-4">
         <Field label="Email">
           <input
@@ -73,9 +72,9 @@ export function LoginForm() {
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+      <p className="mt-6 text-center text-sm text-on-surface-variant">
         Pas encore de compte ?{" "}
-        <Link href="/register" className="font-medium text-brand-600 hover:underline">
+        <Link href="/register" className="font-medium text-primary hover:underline">
           Créer un compte
         </Link>
       </p>
@@ -94,18 +93,24 @@ export function AuthShell({
 }) {
   return (
     <div className="relative flex min-h-dvh items-center justify-center px-4 py-10">
+      {/* Ambient background glow */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute left-[-10%] top-[-10%] h-[50%] w-[50%] rounded-full bg-primary/5 blur-[120px]"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] h-[40%] w-[40%] rounded-full bg-tertiary/5 blur-[120px]"></div>
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 22 }}
-        className="surface w-full max-w-sm rounded-2xl p-7 shadow-lift"
+        className="glass-elevated relative w-full max-w-sm rounded-2xl p-7"
       >
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-600 text-white font-bold text-lg shadow-soft">
-            K
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/30 bg-primary/20 text-primary font-bold text-lg glow-text">
+            <Icon name="ac_unit" size={24} />
           </div>
-          <h1 className="text-xl font-semibold">{title}</h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
+          <h1 className="text-xl font-semibold text-on-surface">{title}</h1>
+          <p className="mt-1 text-sm text-on-surface-variant">{subtitle}</p>
         </div>
         {children}
       </motion.div>
@@ -116,7 +121,7 @@ export function AuthShell({
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-sm font-medium">{label}</span>
+      <span className="text-sm font-medium text-on-surface">{label}</span>
       {children}
     </label>
   );
@@ -128,7 +133,7 @@ export function ErrorShake({ message }: { message: string }) {
       initial={{ x: 0, opacity: 0 }}
       animate={{ x: [-4, 4, -3, 3, 0], opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+      className="rounded-lg border border-error/20 bg-error/10 px-3 py-2 text-sm text-error"
     >
       {message}
     </motion.p>

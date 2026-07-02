@@ -1,95 +1,94 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { Avatar } from "@/components/Avatar";
+import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/utils";
 
-type LinkItem = { href: string; label: string; key: string };
+type LinkItem = { href: string; label: string; key: string; icon: string };
 
 export function MobileNav({
+  open,
+  onClose,
+  user,
   links,
   active,
 }: {
+  open: boolean;
+  onClose: () => void;
+  user: { displayName: string; avatarUrl: string | null };
   links: LinkItem[];
   active?: string;
 }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="md:hidden">
-      {/* Floating menu button */}
-      <button
-        onClick={() => setOpen(true)}
-        aria-label="Ouvrir le menu"
-        className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-white shadow-lift active:scale-95 transition-transform"
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <path d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setOpen(false)}
-              className="fixed inset-0 z-40 bg-black/40"
-            />
-            <motion.nav
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", stiffness: 320, damping: 32 }}
-              className="surface fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl border-t p-4 pb-6"
-            >
-              <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-300 dark:bg-slate-600" />
-              <ul className="space-y-1">
-                {links.map((l) => (
-                  <li key={l.key}>
-                    <Link
-                      href={l.href}
-                      onClick={() => setOpen(false)}
-                      className={cn(
-                        "block rounded-xl px-4 py-3 text-base font-medium",
-                        active === l.key
-                          ? "bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200"
-                          : "hover:bg-slate-100 dark:hover:bg-slate-800",
-                      )}
-                    >
-                      {l.label}
-                    </Link>
-                  </li>
-                ))}
-                <li>
-                  <LogoutButton />
-                </li>
-              </ul>
-            </motion.nav>
-          </>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function LogoutButton() {
   const router = useRouter();
+
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
     router.refresh();
   }
+
   return (
-    <button
-      onClick={logout}
-      className="block w-full rounded-xl px-4 py-3 text-left text-base font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-    >
-      Déconnexion
-    </button>
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+          />
+          <motion.nav
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", stiffness: 320, damping: 32 }}
+            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl border-t border-primary/10 bg-surface/80 p-4 pb-8 backdrop-blur-2xl md:hidden"
+          >
+            <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-primary/30"></div>
+
+            <div className="mb-4 flex items-center gap-3 px-2">
+              <Avatar name={user.displayName} url={user.avatarUrl} size={40} />
+              <div>
+                <p className="text-sm font-semibold text-on-surface">{user.displayName}</p>
+                <p className="text-xs text-on-surface-variant">Mon compte</p>
+              </div>
+            </div>
+
+            <ul className="space-y-1">
+              {links.map((l) => (
+                <li key={l.key}>
+                  <Link
+                    href={l.href}
+                    onClick={onClose}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium transition-colors",
+                      active === l.key
+                        ? "border border-primary/20 bg-primary/10 text-primary"
+                        : "text-on-surface-variant hover:bg-primary/5 hover:text-on-surface",
+                    )}
+                  >
+                    <Icon name={l.icon} size={20} />
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <button
+                  onClick={logout}
+                  className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-base font-medium text-on-surface-variant transition-colors hover:bg-error/10 hover:text-error"
+                >
+                  <Icon name="logout" size={20} />
+                  Déconnexion
+                </button>
+              </li>
+            </ul>
+          </motion.nav>
+        </>
+      )}
+    </AnimatePresence>
   );
 }

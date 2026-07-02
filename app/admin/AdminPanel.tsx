@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar } from "@/components/Avatar";
+import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/utils";
 
 type Stats = { users: number; boards: number; activeTasks: number; completedTasks: number };
@@ -33,54 +34,102 @@ export function AdminPanel({
   const [showCreate, setShowCreate] = useState(false);
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Administration</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Vue d'ensemble de l'instance Kanby.</p>
+    <div className="mx-auto max-w-6xl space-y-8">
+      {/* Header */}
+      <div className="glass-panel relative overflow-hidden rounded-xl p-6">
+        <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-tertiary to-transparent"></div>
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-on-surface glow-text">Administration</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-on-surface-variant">Vue d’ensemble de l’instance Kanby</p>
+          </div>
+          <button onClick={() => setShowCreate(true)} className="btn-primary">
+            <Icon name="person_add" size={16} />
+            Créer un utilisateur
+          </button>
         </div>
-        <button onClick={() => setShowCreate(true)} className="btn-primary !py-2 text-sm">
-          + Créer un utilisateur
-        </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Utilisateurs" value={stats.users} color="brand" />
-        <StatCard label="Tableaux" value={stats.boards} color="violet" />
-        <StatCard label="Tâches actives" value={stats.activeTasks} color="amber" />
-        <StatCard label="Tâches terminées" value={stats.completedTasks} color="emerald" />
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard label="Utilisateurs" value={stats.users} icon="group" />
+        <StatCard label="Tableaux" value={stats.boards} icon="view_kanban" />
+        <StatCard label="Tâches actives" value={stats.activeTasks} icon="trending_up" />
+        <StatCard label="Tâches terminées" value={stats.completedTasks} icon="check_circle" />
       </div>
 
-      <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Utilisateurs</h2>
-        <div className="card-surface overflow-hidden">
-          <ul className="divide-y">
+      {/* Two columns */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <section className="glass-elevated flex flex-col overflow-hidden rounded-xl">
+          <div className="flex items-center justify-between border-b border-primary/10 bg-primary/5 px-6 py-4">
+            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-primary glow-text">Utilisateurs</h2>
+            <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
+              {userList.length} total
+            </span>
+          </div>
+          <ul className="divide-y divide-primary/5">
             {userList.map((u) => (
-              <UserRow key={u.id} user={u} isSelf={u.id === currentUserId} onRemoved={() => setUserList((l) => l.filter((x) => x.id !== u.id))} />
+              <UserRow
+                key={u.id}
+                user={u}
+                isSelf={u.id === currentUserId}
+                onRemoved={() => setUserList((l) => l.filter((x) => x.id !== u.id))}
+              />
             ))}
           </ul>
-        </div>
-      </section>
+        </section>
 
-      <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Tous les tableaux</h2>
-        <div className="card-surface overflow-hidden">
-          <ul className="divide-y">
-            {boards.map((b) => (
-              <li key={b.id} className="flex items-center gap-3 px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <Link href={`/boards/${b.id}`} className="font-medium hover:underline">{b.name}</Link>
-                  <p className="text-xs text-slate-500">
-                    {b.type === "TEAM" ? "Équipe" : "Personnel"} · {b._count.cards} tâches · {b._count.members} membres
-                  </p>
-                </div>
-                <span className="text-xs text-slate-500">{b.owner.displayName}</span>
-              </li>
-            ))}
-            {boards.length === 0 && <li className="px-4 py-6 text-sm text-slate-500">Aucun tableau.</li>}
-          </ul>
-        </div>
-      </section>
+        <section className="glass-elevated flex flex-col overflow-hidden rounded-xl">
+          <div className="flex items-center justify-between border-b border-primary/10 bg-primary/5 px-6 py-4">
+            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-primary glow-text">Tous les tableaux</h2>
+            <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
+              {boards.length} total
+            </span>
+          </div>
+          <div className="flex-1 overflow-auto p-4">
+            <div className="space-y-3">
+              {boards.map((b) => (
+                <Link
+                  key={b.id}
+                  href={`/boards/${b.id}`}
+                  className="glass-panel flex items-center justify-between rounded-lg p-4 transition-all hover:border-primary/30 hover:bg-surface/80"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-primary/10 bg-surface-container-high/40 text-on-surface-variant transition-colors">
+                      <Icon name="view_kanban" size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-on-surface">{b.name}</h3>
+                      <div className="flex items-center gap-2 text-xs text-on-surface-variant">
+                        <span className={cn(
+                          "rounded border px-2 py-0.5 text-[10px] font-bold uppercase",
+                          b.type === "TEAM"
+                            ? "border-tertiary/20 bg-tertiary/10 text-tertiary"
+                            : "border-primary/20 bg-primary/10 text-primary",
+                        )}>
+                          {b.type === "TEAM" ? "Équipe" : "Perso"}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Icon name="group" size={12} /> {b._count.members}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Propriétaire</p>
+                    <p className={cn("text-sm font-medium", b.owner.id === currentUserId ? "text-primary" : "text-on-surface")}>
+                      {b.owner.displayName}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+              {boards.length === 0 && (
+                <p className="py-6 text-center text-sm text-on-surface-variant">Aucun tableau.</p>
+              )}
+            </div>
+          </div>
+        </section>
+      </div>
 
       <AnimatePresence>
         {showCreate && (
@@ -97,22 +146,19 @@ export function AdminPanel({
   );
 }
 
-const COLORS: Record<string, string> = {
-  brand: "bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200",
-  violet: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-200",
-  amber: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200",
-  emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200",
-};
-
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
+function StatCard({ label, value, icon }: { label: string; value: number; icon: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn("rounded-2xl p-4", COLORS[color])}
+      className="glass-panel relative overflow-hidden rounded-xl p-5"
     >
-      <p className="text-3xl font-bold tabular-nums">{value}</p>
-      <p className="mt-1 text-sm font-medium opacity-80">{label}</p>
+      <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/5 blur-[30px]"></div>
+      <div className="relative z-10 mb-4 flex h-10 w-10 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+        <Icon name={icon} size={20} />
+      </div>
+      <p className="relative z-10 text-3xl font-bold tabular-nums text-primary glow-text">{value}</p>
+      <p className="relative z-10 mt-1 text-sm font-medium text-on-surface-variant">{label}</p>
     </motion.div>
   );
 }
@@ -136,26 +182,55 @@ function UserRow({ user, isSelf, onRemoved }: { user: AdminUser; isSelf: boolean
   }
 
   return (
-    <li className="flex items-center gap-3 px-4 py-3">
-      <Avatar name={user.displayName} url={user.avatarUrl} size={34} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">
-          {user.displayName}
-          {isSelf && <span className="ml-2 text-xs text-slate-400">(vous)</span>}
-        </p>
-        <p className="truncate text-xs text-slate-500">
-          {user.email} · {user.globalRole === "ADMIN" ? "Admin" : "Utilisateur"} · {user._count.ownedBoards} tableaux
-        </p>
-      </div>
-      <span className={cn("hidden rounded-full px-2 py-0.5 text-xs sm:inline", active ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200" : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300")}>
-        {active ? "Actif" : "Désactivé"}
-      </span>
-      {!isSelf && (
-        <div className="flex gap-1">
-          <button onClick={toggle} className="btn-ghost !px-2 !py-1 text-xs">{active ? "Désactiver" : "Activer"}</button>
-          <button onClick={remove} className="btn-ghost !px-2 !py-1 text-xs text-rose-600">Supprimer</button>
+    <li className="group flex flex-col gap-4 px-4 py-4 transition-colors hover:bg-primary/5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
+        <Avatar name={user.displayName} url={user.avatarUrl} size={40} />
+        <div>
+          <p className={cn("text-sm font-semibold", isSelf ? "text-primary glow-text" : "text-on-surface")}>
+            {user.displayName}
+            {isSelf && <span className="ml-2 text-xs text-on-surface-variant">(vous)</span>}
+          </p>
+          <p className="text-xs text-on-surface-variant">
+            {user.email} · {user.globalRole === "ADMIN" ? "Admin" : "Utilisateur"} · {user._count.ownedBoards} tableaux
+          </p>
         </div>
-      )}
+      </div>
+
+      <div className="flex items-center gap-4">
+        <span
+          className={cn(
+            "rounded-full border px-2.5 py-1 text-xs font-medium",
+            active
+              ? "border-primary/20 bg-primary/10 text-primary"
+              : "border-on-surface-variant/20 bg-surface-container text-on-surface-variant",
+          )}
+        >
+          {active ? "Actif" : "Désactivé"}
+        </span>
+
+        {!isSelf ? (
+          <div className="flex items-center gap-1 opacity-50 transition-opacity group-hover:opacity-100">
+            <button
+              onClick={toggle}
+              className="rounded-md p-1.5 text-on-surface-variant transition-colors hover:bg-primary/10 hover:text-primary"
+              title={active ? "Désactiver" : "Activer"}
+            >
+              <Icon name={active ? "toggle_on" : "toggle_on"} size={18} />
+            </button>
+            <button
+              onClick={remove}
+              className="rounded-md p-1.5 text-on-surface-variant transition-colors hover:bg-error/10 hover:text-error"
+              title="Supprimer"
+            >
+              <Icon name="delete" size={18} />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 opacity-60">
+            <Icon name="verified_user" size={18} className="text-primary/50" />
+          </div>
+        )}
+      </div>
     </li>
   );
 }
@@ -208,7 +283,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm md:items-center md:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm md:items-center md:p-4"
       onClick={onClose}
     >
       <motion.div
@@ -217,35 +292,44 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
         exit={{ y: 40, opacity: 0 }}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
-        className="card-surface w-full max-w-md space-y-4 rounded-t-2xl p-5 md:rounded-2xl"
+        className="glass-elevated w-full max-w-md space-y-4 rounded-t-2xl p-5 md:rounded-2xl"
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Créer un utilisateur</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">×</button>
+          <h2 className="text-lg font-semibold text-on-surface">Créer un utilisateur</h2>
+          <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">
+            <Icon name="close" size={20} />
+          </button>
         </div>
 
-        {error && <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950/50 dark:text-rose-300">{error}</p>}
+        {error && <p className="rounded-lg border border-error/20 bg-error/10 px-3 py-2 text-sm text-error">{error}</p>}
 
         <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Nom affiché</label>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Nom affiché</label>
           <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="input" placeholder="Jean Dupont" />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Email</label>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Email</label>
           <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="input" placeholder="jean@exemple.fr" />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Mot de passe</label>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Mot de passe</label>
           <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="input" placeholder="••••••••" />
-          <p className="mt-1 text-xs text-slate-400">L'utilisateur devra le changer à sa première connexion.</p>
+          <p className="mt-1 text-xs text-on-surface-variant">L'utilisateur devra le changer à sa première connexion.</p>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={isAdmin} onChange={(e) => setIsAdmin(e.target.checked)} className="h-4 w-4 rounded accent-brand-600" />
+        <label className="flex items-center gap-2 text-sm text-on-surface">
+          <input
+            type="checkbox"
+            checked={isAdmin}
+            onChange={(e) => setIsAdmin(e.target.checked)}
+            className="h-4 w-4 rounded border-primary/30 bg-surface-container accent-primary"
+          />
           Administrateur
         </label>
 
         <div className="flex gap-2">
-          <button onClick={submit} disabled={loading} className="btn-primary flex-1">{loading ? "Création…" : "Créer"}</button>
+          <button onClick={submit} disabled={loading} className="btn-primary flex-1">
+            {loading ? "Création…" : "Créer"}
+          </button>
           <button onClick={onClose} className="btn-ghost">Annuler</button>
         </div>
       </motion.div>

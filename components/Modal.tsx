@@ -44,7 +44,7 @@ export function Modal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm md:items-center md:p-4"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm md:items-center md:p-4"
         >
           <motion.div
             initial={{ y: 40, opacity: 0, scale: 0.98 }}
@@ -57,15 +57,15 @@ export function Modal({
             onDragEnd={(_, info) => info.offset.y > 120 && onClose()}
             onClick={(e) => e.stopPropagation()}
             className={cn(
-              "surface max-h-[88vh] w-full overflow-y-auto rounded-t-2xl shadow-lift md:rounded-2xl",
+              "glass-elevated max-h-[88vh] w-full overflow-y-auto rounded-t-2xl md:rounded-2xl",
               maxW,
             )}
           >
             {/* Drag handle (mobile only) */}
-            <div className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-slate-300 dark:bg-slate-600 md:hidden" />
+            <div className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-primary/30 md:hidden" />
             {title && (
               <div className="px-5 pt-4">
-                <h2 className="text-lg font-semibold">{title}</h2>
+                <h2 className="text-lg font-semibold text-on-surface">{title}</h2>
               </div>
             )}
             <div className="p-5 pt-3">{children}</div>

@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/Modal";
+import { Icon } from "@/components/Icon";
+import { cn } from "@/lib/utils";
 
 type BoardItem = {
   id: string;
@@ -18,16 +20,19 @@ export function BoardsList({ owned, member }: { owned: BoardItem[]; member: Boar
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Mes tableaux</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Vos tableaux personnels et d’équipe.
-          </p>
+      {/* Header */}
+      <div className="glass-panel relative overflow-hidden rounded-xl p-6">
+        <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-primary to-transparent"></div>
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-on-surface">Mes tableaux</h1>
+            <p className="text-sm text-on-surface-variant">Vos tableaux personnels et d’équipe.</p>
+          </div>
+          <button onClick={() => setCreating(true)} className="btn-primary">
+            <Icon name="add" size={16} />
+            Nouveau tableau
+          </button>
         </div>
-        <button onClick={() => setCreating(true)} className="btn-primary">
-          <PlusIcon /> Nouveau tableau
-        </button>
       </div>
 
       {owned.length > 0 && (
@@ -43,15 +48,17 @@ export function BoardsList({ owned, member }: { owned: BoardItem[]; member: Boar
       )}
 
       {owned.length === 0 && member.length === 0 && (
-        <div className="card-surface flex flex-col items-center justify-center gap-4 p-12 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-900/40">
-            <PlusIcon />
+        <div className="glass-elevated flex flex-col items-center justify-center gap-4 rounded-2xl p-12 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/30 bg-primary/20 text-primary">
+            <Icon name="add" size={28} />
           </div>
           <div>
-            <p className="font-medium">Aucun tableau pour l’instant</p>
-            <p className="text-sm text-slate-500">Créez votre premier tableau Kanban.</p>
+            <p className="font-medium text-on-surface">Aucun tableau pour l’instant</p>
+            <p className="text-sm text-on-surface-variant">Créez votre premier tableau Kanban.</p>
           </div>
-          <button onClick={() => setCreating(true)} className="btn-primary">Créer un tableau</button>
+          <button onClick={() => setCreating(true)} className="btn-primary">
+            Créer un tableau
+          </button>
         </div>
       )}
 
@@ -63,7 +70,7 @@ export function BoardsList({ owned, member }: { owned: BoardItem[]; member: Boar
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">{title}</h2>
+      <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-primary">{title}</h2>
       {children}
     </section>
   );
@@ -71,21 +78,28 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Grid({ items }: { items: BoardItem[] }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <AnimatePresence>
         {items.map((b) => (
           <motion.div key={b.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96 }}>
             <Link
               href={`/boards/${b.id}`}
-              className="card-surface group block p-4 transition-shadow hover:shadow-lift"
+              className="glass-panel group block rounded-xl p-4 transition-all hover:border-primary/30 hover:bg-surface/80 hover:shadow-glow"
             >
               <div className="flex items-start justify-between">
-                <span className="font-medium">{b.name}</span>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${b.type === "TEAM" ? "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-200" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>
+                <span className="font-medium text-on-surface group-hover:text-primary transition-colors">{b.name}</span>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-xs font-medium border",
+                    b.type === "TEAM"
+                      ? "bg-tertiary/10 text-tertiary border-tertiary/20"
+                      : "bg-primary/10 text-primary border-primary/20",
+                  )}
+                >
                   {b.type === "TEAM" ? "Équipe" : "Perso"}
                 </span>
               </div>
-              <p className="mt-3 text-xs text-slate-500">
+              <p className="mt-3 text-xs text-on-surface-variant">
                 {b.cardsCount} tâche{b.cardsCount > 1 ? "s" : ""} · {b.role === "OWNER" ? "Propriétaire" : "Membre"}
               </p>
             </Link>
@@ -124,7 +138,7 @@ function CreateBoardModal({ open, onClose }: { open: boolean; onClose: () => voi
     <Modal open={open} onClose={onClose} title="Nouveau tableau">
       <div className="space-y-4">
         <label className="block">
-          <span className="text-sm font-medium">Nom du tableau</span>
+          <span className="text-sm font-medium text-on-surface">Nom du tableau</span>
           <input
             autoFocus
             className="input mt-1"
@@ -135,17 +149,22 @@ function CreateBoardModal({ open, onClose }: { open: boolean; onClose: () => voi
         </label>
 
         <div>
-          <span className="text-sm font-medium">Type</span>
+          <span className="text-sm font-medium text-on-surface">Type</span>
           <div className="mt-2 grid grid-cols-2 gap-2">
             {(["PERSONAL", "TEAM"] as const).map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setType(t)}
-                className={`rounded-xl border px-3 py-2.5 text-left text-sm transition-colors ${type === t ? "border-brand-500 bg-brand-50 dark:bg-brand-900/30" : "hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+                className={cn(
+                  "rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
+                  type === t
+                    ? "border-primary/50 bg-primary/10 text-primary"
+                    : "border-primary/10 text-on-surface-variant hover:bg-primary/5",
+                )}
               >
-                <span className="block font-medium">{t === "PERSONAL" ? "Personnel" : "Équipe"}</span>
-                <span className="text-xs text-slate-500">
+                <span className="block font-medium text-on-surface">{t === "PERSONAL" ? "Personnel" : "Équipe"}</span>
+                <span className="text-xs text-on-surface-variant">
                   {t === "PERSONAL" ? "Privé, visible par vous seul" : "Partage avec d’autres membres"}
                 </span>
               </button>
@@ -153,7 +172,7 @@ function CreateBoardModal({ open, onClose }: { open: boolean; onClose: () => voi
           </div>
         </div>
 
-        {error && <p className="text-sm text-rose-600">{error}</p>}
+        {error && <p className="text-sm text-error">{error}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
           <button onClick={onClose} className="btn-ghost">Annuler</button>
@@ -163,13 +182,5 @@ function CreateBoardModal({ open, onClose }: { open: boolean; onClose: () => voi
         </div>
       </div>
     </Modal>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
   );
 }

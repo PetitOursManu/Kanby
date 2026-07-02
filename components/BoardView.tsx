@@ -6,6 +6,8 @@ import { BoardHeader } from "@/components/BoardHeader";
 import { DndBoard } from "@/components/DndBoard";
 import { CardModal } from "@/components/CardModal";
 import { ConfettiOnDoneDrop } from "@/components/ConfettiOnDoneDrop";
+import { Icon } from "@/components/Icon";
+import { cn } from "@/lib/utils";
 import { apiPost } from "@/lib/client-api";
 import type { BoardData, CardRow, ColumnRow, CurrentUser, CardDetail } from "@/types/api";
 
@@ -61,7 +63,7 @@ export function BoardView({
   }
 
   return (
-    <div>
+    <div className="flex h-[calc(100dvh-4rem)] flex-col">
       <ConfettiOnDoneDrop />
 
       <BoardHeader
@@ -71,7 +73,44 @@ export function BoardView({
         onToggleType={toggleType}
       />
 
-      <div className="relative">
+      {/* Column quick-nav */}
+      {columns.length > 0 && (
+        <div className="no-scrollbar mb-3 flex gap-2 overflow-x-auto pb-1">
+          {columns.map((col) => (
+            <button
+              key={col.id}
+              onClick={() =>
+                document
+                  .getElementById(`col-${col.id}`)
+                  ?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" })
+              }
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-primary/10 bg-surface/40 px-3 py-1 text-xs font-medium text-on-surface-variant transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
+              title={`Aller à : ${col.name}`}
+            >
+              {col.color ? (
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: col.color }}
+                />
+              ) : (
+                <span
+                  className={cn(
+                    "h-2 w-2 rounded-full",
+                    col.kind === "DONE"
+                      ? "bg-emerald-500"
+                      : col.kind === "DOING"
+                        ? "bg-amber-500"
+                        : "bg-on-surface-variant",
+                  )}
+                />
+              )}
+              {col.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="min-h-0 flex-1">
         <DndBoard
           columns={columns}
           setColumns={setColumns}
@@ -81,8 +120,9 @@ export function BoardView({
       </div>
 
       {canEdit && (
-        <button onClick={addColumn} className="btn-ghost mt-4 text-sm">
-          + Ajouter une colonne
+        <button onClick={addColumn} className="btn-ghost mt-4 shrink-0 text-sm">
+          <Icon name="add" size={14} />
+          Ajouter une colonne
         </button>
       )}
 

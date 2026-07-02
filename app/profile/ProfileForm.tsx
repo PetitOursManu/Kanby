@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar } from "@/components/Avatar";
+import { Icon } from "@/components/Icon";
 
 type Props = {
   user: {
@@ -18,12 +19,10 @@ type Props = {
 
 export function ProfileForm({ user, mustChangeBanner }: Props) {
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Profil</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Gérez votre identité, votre mot de passe et vos tokens d’API.
-        </p>
+        <h1 className="text-3xl font-bold tracking-tight text-on-surface">Profil</h1>
+        <p className="text-sm text-on-surface-variant">Gérez votre identité, votre mot de passe et vos tokens d’API.</p>
       </div>
 
       <AnimatePresence>
@@ -32,7 +31,7 @@ export function ProfileForm({ user, mustChangeBanner }: Props) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+            className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300"
           >
             Pour des raisons de sécurité, veuillez changer votre mot de passe.
           </motion.div>
@@ -56,12 +55,12 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section className="card-surface p-5">
-      <h2 className="text-base font-semibold">{title}</h2>
-      {description && (
-        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{description}</p>
-      )}
-      <div className="mt-4">{children}</div>
+    <section className="glass-elevated rounded-2xl p-6 md:p-8">
+      <div className="mb-6 border-b border-primary/10 pb-4">
+        <h2 className="text-lg font-semibold text-on-surface">{title}</h2>
+        {description && <p className="mt-1 text-sm text-on-surface-variant">{description}</p>}
+      </div>
+      <div>{children}</div>
     </section>
   );
 }
@@ -89,23 +88,46 @@ function IdentityCard({ user }: { user: Props["user"] }) {
 
   return (
     <Card title="Identité" description="Nom affiché et avatar.">
-      <div className="flex items-center gap-4">
-        <Avatar name={displayName || user.email} url={avatarUrl || null} size={56} />
-        <div className="flex-1 space-y-3">
+      <div className="flex flex-col items-start gap-6 md:flex-row">
+        <div className="flex flex-col items-center gap-4">
+          <div className="group relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-primary/30 bg-primary/20 text-3xl font-bold tracking-wider text-primary shadow-glow-sm">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+            ) : (
+              <span className="relative z-10">{initials(displayName)}</span>
+            )}
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/50 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
+              <Icon name="edit" size={24} className="text-white" />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-1 flex-col gap-4">
           <label className="block">
-            <span className="text-sm font-medium">Nom affiché</span>
-            <input className="input mt-1" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            <span className="text-sm font-medium text-on-surface-variant">Nom affiché</span>
+            <input
+              className="input mt-1"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
           </label>
           <label className="block">
-            <span className="text-sm font-medium">URL d’avatar (optionnel)</span>
-            <input className="input mt-1" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://…" />
+            <span className="text-sm font-medium text-on-surface-variant">URL d’avatar (optionnel)</span>
+            <input
+              className="input mt-1"
+              value={avatarUrl}
+              onChange={(e) => setAvatarUrl(e.target.value)}
+              placeholder="https://…"
+            />
           </label>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <button onClick={save} disabled={saving} className="btn-primary">
               {saving ? "Enregistrement…" : "Enregistrer"}
             </button>
-            <span className="text-sm text-slate-500">{user.email} · {user.globalRole === "ADMIN" ? "Administrateur" : "Utilisateur"}</span>
-            {msg && <span className="text-sm text-emerald-600">{msg}</span>}
+            <span className="text-sm text-on-surface-variant">
+              {user.email} · {user.globalRole === "ADMIN" ? "Administrateur" : "Utilisateur"}
+            </span>
+            {msg && <span className="text-sm text-primary">{msg}</span>}
           </div>
         </div>
       </div>
@@ -141,13 +163,31 @@ function PasswordCard({ mustChange }: { mustChange: boolean }) {
 
   return (
     <Card title="Mot de passe" description="Choisissez un mot de passe d’au moins 8 caractères.">
-      <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
-        <input type="password" autoComplete="current-password" placeholder="Mot de passe actuel" className="input" value={current} onChange={(e) => setCurrent(e.target.value)} required />
-        <input type="password" autoComplete="new-password" placeholder="Nouveau mot de passe" className="input" value={next} onChange={(e) => setNext(e.target.value)} required />
-        <div className="flex items-center gap-3 sm:col-span-2">
-          <button type="submit" disabled={saving} className="btn-primary">{saving ? "…" : "Changer le mot de passe"}</button>
-          {mustChange && <span className="text-sm text-amber-600">Changement obligatoire</span>}
-          {msg && <span className="text-sm text-emerald-600">{msg}</span>}
+      <form onSubmit={save} className="grid gap-4 md:grid-cols-2">
+        <input
+          type="password"
+          autoComplete="current-password"
+          placeholder="Mot de passe actuel"
+          className="input"
+          value={current}
+          onChange={(e) => setCurrent(e.target.value)}
+          required
+        />
+        <input
+          type="password"
+          autoComplete="new-password"
+          placeholder="Nouveau mot de passe"
+          className="input"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+          required
+        />
+        <div className="flex items-center gap-4 md:col-span-2">
+          <button type="submit" disabled={saving} className="btn-primary">
+            {saving ? "…" : "Changer le mot de passe"}
+          </button>
+          {mustChange && <span className="text-sm text-amber-300">Changement obligatoire</span>}
+          {msg && <span className="text-sm text-primary">{msg}</span>}
         </div>
       </form>
     </Card>
@@ -198,23 +238,32 @@ function TokensCard() {
   }
 
   return (
-    <Card title="Tokens d’API" description="Pour connecter un dashboard externe (ex. Dashy) au résumé de vos tâches. Le token brut n’est affiché qu’une seule fois.">
+    <Card
+      title="Tokens d’API"
+      description="Pour connecter un dashboard externe (ex. Dashy) au résumé de vos tâches. Le token brut n’est affiché qu’une seule fois."
+    >
       <div className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row">
-          <input className="input" placeholder="Nom du token (ex. Dashy)" value={label} onChange={(e) => setLabel(e.target.value)} />
-          <button onClick={create} className="btn-primary shrink-0">Générer un token</button>
+          <input
+            className="input"
+            placeholder="Nom du token (ex. Dashy)"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+          />
+          <button onClick={create} className="btn-primary shrink-0">
+            <Icon name="add" size={16} />
+            Générer un token
+          </button>
         </div>
 
         {created && (
           <motion.div
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 dark:border-emerald-700 dark:bg-emerald-950/40"
+            className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3"
           >
-            <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200">
-              Copiez ce token maintenant, il ne sera plus affiché :
-            </p>
-            <code className="mt-1 block break-all rounded bg-white px-2 py-1 text-sm dark:bg-slate-900">{created}</code>
+            <p className="text-sm font-medium text-emerald-300">Copiez ce token maintenant, il ne sera plus affiché :</p>
+            <code className="mt-1 block break-all rounded bg-background/60 px-2 py-1 text-sm text-on-surface">{created}</code>
             <div className="mt-2 flex gap-2">
               <button
                 className="btn-ghost text-xs"
@@ -227,11 +276,11 @@ function TokensCard() {
           </motion.div>
         )}
 
-        {msg && <p className="text-sm text-rose-600">{msg}</p>}
+        {msg && <p className="text-sm text-error">{msg}</p>}
 
-        <ul className="divide-y rounded-xl border">
+        <ul className="divide-y divide-primary/5 rounded-xl border border-primary/10">
           {tokens.length === 0 && !loading && (
-            <li className="px-3 py-4 text-sm text-slate-500">Aucun token actif.</li>
+            <li className="px-3 py-4 text-sm text-on-surface-variant">Aucun token actif.</li>
           )}
           <AnimatePresence>
             {tokens.map((t) => (
@@ -244,12 +293,12 @@ function TokensCard() {
                 className="flex items-center justify-between gap-3 px-3 py-3"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{t.label}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="truncate text-sm font-medium text-on-surface">{t.label}</p>
+                  <p className="text-xs text-on-surface-variant">
                     <code>kbt_{t.prefix}…</code> · utilisé {t.lastUsedAt ? new Date(t.lastUsedAt).toLocaleDateString() : "jamais"}
                   </p>
                 </div>
-                <button onClick={() => revoke(t.id)} className="btn-ghost text-xs text-rose-600">Révoquer</button>
+                <button onClick={() => revoke(t.id)} className="btn-danger text-xs">Révoquer</button>
               </motion.li>
             ))}
           </AnimatePresence>
@@ -257,4 +306,14 @@ function TokensCard() {
       </div>
     </Card>
   );
+}
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }

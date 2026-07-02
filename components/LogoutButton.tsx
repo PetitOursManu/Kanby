@@ -1,8 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { Icon } from "@/components/Icon";
+import { cn } from "@/lib/utils";
 
-export function LogoutButton({ className }: { className?: string }) {
+export function LogoutButton({
+  className,
+  showLabel,
+}: {
+  className?: string;
+  showLabel?: boolean;
+}) {
   const router = useRouter();
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -13,13 +21,17 @@ export function LogoutButton({ className }: { className?: string }) {
     <button
       onClick={logout}
       aria-label="Déconnexion"
-      className={className}
       title="Déconnexion"
+      className={cn(
+        "transition-colors",
+        showLabel
+          ? "inline-flex w-full items-center justify-start gap-3"
+          : "inline-flex h-9 w-9 items-center justify-center rounded-full border border-primary/20 text-on-surface-variant hover:bg-primary/5 hover:text-primary",
+        className,
+      )}
     >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-        <path d="M16 17l5-5-5-5M21 12H9" />
-      </svg>
+      <Icon name="logout" size={18} />
+      {showLabel && <span>Déconnexion</span>}
     </button>
   );
 }

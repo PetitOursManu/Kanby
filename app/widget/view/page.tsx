@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { resolveApiTokenUser } from "@/lib/auth/token";
 import { buildWidgetSummary } from "@/lib/widget-summary";
+import { Icon } from "@/components/Icon";
 import { WidgetViewClient } from "./WidgetViewClient";
 
 export const runtime = "nodejs";
@@ -30,8 +31,10 @@ export default async function WidgetViewPage({
     return (
       <WidgetShell>
         <div className="flex flex-col items-center gap-3 py-10 text-center">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 font-bold text-white">K</div>
-          <p className="text-sm text-slate-400">Token invalide ou manquant.</p>
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/30 bg-primary/20 text-primary">
+            <Icon name="ac_unit" size={18} />
+          </div>
+          <p className="text-sm text-on-surface-variant">Token invalide ou manquant.</p>
         </div>
       </WidgetShell>
     );
@@ -48,10 +51,7 @@ export default async function WidgetViewPage({
 /** Compact dark wrapper styled to look good in a small iframe. */
 function WidgetShell({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="min-h-dvh w-full p-3 text-slate-100"
-      style={{ background: "linear-gradient(160deg, #0f172a 0%, #1e293b 100%)" }}
-    >
+    <div className="min-h-dvh w-full bg-background p-3 text-on-surface">
       <div className="mx-auto max-w-sm">{children}</div>
     </div>
   );

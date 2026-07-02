@@ -1,0 +1,106 @@
+"use client";
+
+import {
+  LayoutDashboard,
+  Users,
+  Settings,
+  HelpCircle,
+  LogOut,
+  Plus,
+  Search,
+  Bell,
+  History,
+  ListFilter,
+  MoreHorizontal,
+  MoreVertical,
+  Eye,
+  CheckCircle2,
+  MessageCircle,
+  Paperclip,
+  Flag,
+  Clock,
+  CheckSquare,
+  Layers,
+  BarChart3,
+  UserPlus,
+  Ban,
+  Trash2,
+  ToggleRight,
+  ShieldCheck,
+  LayoutTemplate,
+  TrendingUp,
+  Pencil,
+  Snowflake,
+  Menu,
+  ChevronRight,
+  Share2,
+  GripVertical,
+  Palette,
+  X,
+  Calendar,
+  Check,
+  CircleHelp,
+  Sun,
+  Moon,
+  type LucideProps,
+} from "lucide-react";
+
+const ICONS: Record<string, React.ComponentType<LucideProps>> = {
+  dashboard: LayoutDashboard,
+  group: Users,
+  settings: Settings,
+  help: HelpCircle,
+  logout: LogOut,
+  add: Plus,
+  search: Search,
+  notifications: Bell,
+  history: History,
+  filter_list: ListFilter,
+  more_horiz: MoreHorizontal,
+  more_vert: MoreVertical,
+  visibility: Eye,
+  check_circle: CheckCircle2,
+  chat_bubble: MessageCircle,
+  attach_file: Paperclip,
+  flag: Flag,
+  schedule: Clock,
+  checklist: CheckSquare,
+  workspaces: Layers,
+  analytics: BarChart3,
+  person_add: UserPlus,
+  block: Ban,
+  delete: Trash2,
+  toggle_on: ToggleRight,
+  verified_user: ShieldCheck,
+  view_kanban: LayoutTemplate,
+  trending_up: TrendingUp,
+  edit: Pencil,
+  ac_unit: Snowflake,
+  menu: Menu,
+  chevron_right: ChevronRight,
+  share: Share2,
+  drag_handle: GripVertical,
+  color: Palette,
+  close: X,
+  calendar: Calendar,
+  check: Check,
+  sun: Sun,
+  moon: Moon,
+};
+
+export type IconName = keyof typeof ICONS;
+
+export function Icon({
+  name,
+  size = 18,
+  className,
+  strokeWidth = 2,
+}: {
+  name: IconName | string;
+  size?: number;
+  className?: string;
+  strokeWidth?: number;
+}) {
+  const Component = ICONS[name] ?? CircleHelp;
+  return <Component size={size} className={className} strokeWidth={strokeWidth} />;
+}

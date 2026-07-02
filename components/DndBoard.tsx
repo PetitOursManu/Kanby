@@ -152,7 +152,7 @@ export function DndBoard({
       onDragEnd={onDragEnd}
     >
       <SortableContext items={columns.map((c) => c.id)} strategy={horizontalListSortingStrategy}>
-        <div className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 md:overflow-visible md:gap-4 md:snap-none">
+        <div className="no-scrollbar flex h-full gap-4 overflow-x-auto pb-4">
           {columns.map((column) => (
             <BoardColumn
               key={column.id}

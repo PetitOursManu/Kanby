@@ -12,13 +12,27 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Kanby — Gestionnaire de tâches Kanban",
   description: "Un Kanban simple, vivant et auto-hébergé.",
+  manifest: "/site.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Kanby",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#3380fc",
+  themeColor: "#0a0e1a",
 };
 
 export default function RootLayout({
@@ -31,8 +45,8 @@ export default function RootLayout({
       <body className="font-sans">
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="dark"
+          enableSystem={false}
           disableTransitionOnChange
         >
           {children}

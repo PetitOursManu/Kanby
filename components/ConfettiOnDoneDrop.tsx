@@ -20,7 +20,7 @@ export function ConfettiOnDoneDrop() {
         spread: 75,
         startVelocity: 38,
         origin: { y: 0.7 },
-        colors: ["#3380fc", "#8b5cf6", "#ec4899", "#10b981", "#f59e0b"],
+        colors: ["#7dd3fc", "#c8a0f0", "#88b4cc", "#10b981", "#f59e0b"],
         disableForReducedMotion: true,
       });
       if (!mounted) return;

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/Modal";
 import { Avatar } from "@/components/Avatar";
+import { Icon } from "@/components/Icon";
 import { LABEL_COLORS } from "@/lib/constants";
 import { cn, formatDueDate, isOverdue } from "@/lib/utils";
 import { apiPost, apiDelete } from "@/lib/client-api";
@@ -56,7 +57,7 @@ export function CardModal({
   if (loading) {
     return (
       <Modal open onClose={onClose}>
-        <p className="text-sm text-slate-500">Chargement…</p>
+        <p className="text-sm text-on-surface-variant">Chargement…</p>
       </Modal>
     );
   }
@@ -70,7 +71,7 @@ export function CardModal({
           value={card.title}
           onChange={(e) => setCard({ ...card, title: e.target.value })}
           onBlur={() => patch({ title: card.title })}
-          className="w-full bg-transparent text-lg font-semibold outline-none"
+          className="w-full bg-transparent text-lg font-semibold text-on-surface outline-none placeholder:text-on-surface-variant"
         />
 
         {/* Meta: due date + column + assignee */}
@@ -85,7 +86,7 @@ export function CardModal({
                 patch({ dueDate: v ? new Date(v + "T12:00:00").toISOString() : null });
                 setCard({ ...card, dueDate: v ? new Date(v + "T12:00:00") : null });
               }}
-              className={cn("input !py-1.5 text-sm", card.dueDate && isOverdue(card.dueDate) && !card.completedAt && "border-rose-400")}
+              className={cn("input !py-1.5 text-sm", card.dueDate && isOverdue(card.dueDate) && !card.completedAt && "border-error")}
             />
           </div>
 
@@ -147,8 +148,8 @@ export function CardModal({
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t pt-4">
-          <span className="text-xs text-slate-500">
+        <div className="flex items-center justify-between border-t border-primary/10 pt-4">
+          <span className="text-xs text-on-surface-variant">
             Créée le {new Date(card.createdAt).toLocaleDateString()}
           </span>
           <button
@@ -158,7 +159,7 @@ export function CardModal({
               onCardDeleted(card.id);
               onClose();
             }}
-            className="btn-ghost text-xs text-rose-600"
+            className="btn-danger text-xs"
           >
             Supprimer
           </button>
@@ -178,7 +179,7 @@ export function CardModal({
 }
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{children}</span>;
+  return <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">{children}</span>;
 }
 
 function AssigneePicker({
@@ -192,7 +193,7 @@ function AssigneePicker({
 }) {
   return (
     <div>
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Assigné à</span>
+      <Label>Assigné à</Label>
       <select
         value={current?.id ?? ""}
         onChange={(e) => onChange(e.target.value || null)}
@@ -204,7 +205,7 @@ function AssigneePicker({
         ))}
       </select>
       {current && (
-        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-on-surface-variant">
           <Avatar name={current.displayName} url={current.avatarUrl} size={16} /> {current.displayName}
         </div>
       )}
@@ -252,28 +253,48 @@ function LabelsSection({
               onClick={() => toggle(label.id)}
               className={cn(
                 "rounded-full px-2.5 py-1 text-xs font-medium transition-all",
-                attached ? "text-white shadow-soft" : "text-slate-600 ring-1 ring-inset hover:scale-105 dark:text-slate-300",
+                attached ? "text-white shadow-glow-sm" : "text-on-surface-variant ring-1 ring-inset hover:scale-105",
               )}
-              style={attached ? { backgroundColor: label.color } : { color: label.color, borderColor: label.color, boxShadow: `inset 0 0 0 1px ${label.color}` }}
+              style={
+                attached
+                  ? { backgroundColor: label.color }
+                  : {
+                      color: label.color,
+                      borderColor: label.color,
+                      boxShadow: `inset 0 0 0 1px ${label.color}50`,
+                    }
+              }
             >
               {label.name}
             </button>
           );
         })}
-        <button onClick={() => setCreating((v) => !v)} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700">
+        <button
+          onClick={() => setCreating((v) => !v)}
+          className="rounded-full border border-primary/10 bg-surface-container px-2.5 py-1 text-xs font-medium text-on-surface-variant transition-colors hover:bg-primary/5 hover:text-primary"
+        >
           + Étiquette
         </button>
       </div>
 
       {creating && (
-        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-2 rounded-xl border p-3">
-          <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nom de l’étiquette" className="input text-sm" />
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          className="mt-2 rounded-xl border border-primary/10 p-3"
+        >
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Nom de l’étiquette"
+            className="input text-sm"
+          />
           <div className="mt-2 flex flex-wrap gap-1.5">
             {LABEL_COLORS.map((c) => (
               <button
                 key={c.value}
                 onClick={() => setNewColor(c.value)}
-                className={cn("h-6 w-6 rounded-full ring-2 ring-offset-1", newColor === c.value ? "ring-slate-900 dark:ring-white" : "ring-transparent")}
+                className={cn("h-6 w-6 rounded-full ring-2 ring-offset-1", newColor === c.value ? "ring-on-surface" : "ring-transparent")}
                 style={{ backgroundColor: c.value }}
                 title={c.name}
               />
@@ -329,11 +350,21 @@ function ChecklistSection({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, x: -8 }}
-              className="group flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-primary/5"
             >
-              <input type="checkbox" checked={item.done} onChange={() => toggle(item.id, item.done)} className="h-4 w-4 rounded accent-brand-600" />
-              <span className={cn("flex-1 text-sm", item.done && "text-slate-400 line-through")}>{item.text}</span>
-              <button onClick={() => remove(item.id)} className="text-xs text-slate-400 opacity-0 hover:text-rose-600 group-hover:opacity-100">×</button>
+              <input
+                type="checkbox"
+                checked={item.done}
+                onChange={() => toggle(item.id, item.done)}
+                className="h-4 w-4 rounded border-primary/30 bg-surface-container text-primary accent-primary"
+              />
+              <span className={cn("flex-1 text-sm text-on-surface", item.done && "text-on-surface-variant line-through")}>{item.text}</span>
+              <button
+                onClick={() => remove(item.id)}
+                className="text-xs text-on-surface-variant opacity-0 transition-colors hover:text-error group-hover:opacity-100"
+              >
+                <Icon name="close" size={14} />
+              </button>
             </motion.li>
           ))}
         </AnimatePresence>
@@ -381,17 +412,29 @@ function CommentsSection({
       <ul className="space-y-3">
         <AnimatePresence>
           {card.comments.map((c) => (
-            <motion.li key={c.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex gap-2.5">
+            <motion.li
+              key={c.id}
+              layout
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex gap-2.5"
+            >
               <Avatar name={c.author.displayName} url={c.author.avatarUrl} size={26} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{c.author.displayName}</span>
-                  <span className="text-xs text-slate-400">{new Date(c.createdAt).toLocaleDateString()}</span>
+                  <span className="text-sm font-medium text-on-surface">{c.author.displayName}</span>
+                  <span className="text-xs text-on-surface-variant">{new Date(c.createdAt).toLocaleDateString()}</span>
                   {c.author.id === currentUser.id && (
-                    <button onClick={() => remove(c.id)} className="ml-auto text-xs text-slate-400 hover:text-rose-600">×</button>
+                    <button
+                      onClick={() => remove(c.id)}
+                      className="ml-auto text-xs text-on-surface-variant transition-colors hover:text-error"
+                    >
+                      <Icon name="close" size={14} />
+                    </button>
                   )}
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{c.text}</p>
+                <p className="whitespace-pre-wrap text-sm text-on-surface-variant">{c.text}</p>
               </div>
             </motion.li>
           ))}

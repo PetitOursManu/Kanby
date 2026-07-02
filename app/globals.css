@@ -4,21 +4,21 @@
 
 @layer base {
   :root {
-    --bg: 248 250 252; /* slate-50 */
-    --bg-elevated: 255 255 255;
-    --fg: 15 23 42; /* slate-900 */
-    --muted: 100 116 139; /* slate-500 */
-    --border: 226 232 240; /* slate-200 */
-    --ring: 51 128 252; /* brand-500 */
+    --bg: 10 14 26; /* background #0a0e1a */
+    --bg-elevated: 15 21 36; /* surface #0f1524 */
+    --fg: 224 232 240; /* on-surface #e0e8f0 */
+    --muted: 160 180 196; /* on-surface-variant #a0b4c4 */
+    --border: 74 96 112; /* outline #4a6070 */
+    --ring: 125 211 252; /* primary #7dd3fc */
   }
 
   .dark {
-    --bg: 15 23 42; /* slate-900 */
-    --bg-elevated: 30 41 59; /* slate-800 */
-    --fg: 226 232 240; /* slate-200 */
-    --muted: 148 163 184; /* slate-400 */
-    --border: 51 65 85; /* slate-700 */
-    --ring: 89 163 255; /* brand-400 */
+    --bg: 10 14 26;
+    --bg-elevated: 15 21 36;
+    --fg: 224 232 240;
+    --muted: 160 180 196;
+    --border: 74 96 112;
+    --ring: 125 211 252;
   }
 
   * {
@@ -27,14 +27,30 @@
 
   html,
   body {
-    background-color: rgb(var(--bg));
-    color: rgb(var(--fg));
+    background-color: #0a0e1a;
+    color: #e0e8f0;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
 
   body {
     min-height: 100dvh;
+  }
+
+  /* Custom Arctic Glass scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(125, 211, 252, 0.2);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(125, 211, 252, 0.4);
   }
 
   /* Hide scrollbars on horizontal swipers but keep functionality */
@@ -49,31 +65,100 @@
 
 @layer components {
   .surface {
-    background-color: rgb(var(--bg-elevated));
-    border: 1px solid rgb(var(--border));
+    background-color: rgba(15, 21, 36, 0.6);
+    border: 1px solid rgba(125, 211, 252, 0.1);
+  }
+
+  .glass-panel {
+    background: rgba(15, 21, 36, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(125, 211, 252, 0.1);
+  }
+
+  .glass-elevated {
+    background: rgba(15, 21, 36, 0.75);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(125, 211, 252, 0.15);
+    box-shadow: 0 0 30px rgba(125, 211, 252, 0.05);
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-150 select-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 select-none;
   }
+
+  .glass-button {
+    @apply btn;
+    background: rgba(125, 211, 252, 0.08);
+    border: 1px solid rgba(125, 211, 252, 0.2);
+    color: #7dd3fc;
+  }
+  .glass-button:hover {
+    background: rgba(125, 211, 252, 0.15);
+    box-shadow: 0 0 15px rgba(125, 211, 252, 0.1);
+  }
+  .glass-button:active {
+    transform: scale(0.98);
+  }
+
   .btn-primary {
-    @apply btn bg-brand-600 text-white shadow-soft hover:bg-brand-700 active:scale-[0.98];
+    @apply glass-button;
   }
+
   .btn-ghost {
-    @apply btn text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 active:scale-[0.98];
+    @apply btn;
+    background: transparent;
+    border: 1px solid transparent;
+    color: #a0b4c4;
   }
+  .btn-ghost:hover {
+    background: rgba(125, 211, 252, 0.05);
+    color: #e0e8f0;
+  }
+  .btn-ghost:active {
+    transform: scale(0.98);
+  }
+
   .btn-danger {
-    @apply btn bg-rose-600 text-white hover:bg-rose-700 active:scale-[0.98];
+    @apply btn;
+    background: rgba(255, 107, 107, 0.1);
+    border: 1px solid rgba(255, 107, 107, 0.2);
+    color: #ff6b6b;
+  }
+  .btn-danger:hover {
+    background: rgba(255, 107, 107, 0.15);
+    box-shadow: 0 0 15px rgba(255, 107, 107, 0.1);
+  }
+  .btn-danger:active {
+    transform: scale(0.98);
   }
 
   .input {
-    @apply w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none transition-shadow placeholder:text-slate-400 focus:ring-2 focus:ring-brand-500/40 dark:bg-slate-800 dark:placeholder:text-slate-500;
-    border-color: rgb(var(--border));
+    @apply w-full rounded-lg border px-3 py-2 text-sm outline-none transition-all;
+    background: rgba(26, 36, 56, 0.4);
+    border-color: rgba(125, 211, 252, 0.1);
+    color: #e0e8f0;
+  }
+  .input::placeholder {
+    color: rgba(160, 180, 196, 0.5);
+  }
+  .input:focus {
+    border-color: rgba(125, 211, 252, 0.5);
+    box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.2);
   }
 
   .card-surface {
-    background-color: rgb(var(--bg-elevated));
-    border: 1px solid rgb(var(--border));
-    @apply rounded-2xl shadow-soft;
+    @apply glass-panel rounded-xl;
+  }
+
+  .glow-text {
+    text-shadow: 0 0 10px rgba(125, 211, 252, 0.3);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
   }
 }

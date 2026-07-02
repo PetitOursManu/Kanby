@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthShell, Field, ErrorShake } from "@/app/login/LoginForm";
 
 export function RegisterForm() {
@@ -36,7 +34,6 @@ export function RegisterForm() {
 
   return (
     <AuthShell title="Créer un compte" subtitle="Une minute suffit pour commencer.">
-      <ThemeToggle className="absolute right-4 top-4" />
       <form onSubmit={onSubmit} className="space-y-4">
         <Field label="Nom affiché">
           <input
@@ -76,9 +73,9 @@ export function RegisterForm() {
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+      <p className="mt-6 text-center text-sm text-on-surface-variant">
         Déjà un compte ?{" "}
-        <Link href="/login" className="font-medium text-brand-600 hover:underline">
+        <Link href="/login" className="font-medium text-primary hover:underline">
           Se connecter
         </Link>
       </p>

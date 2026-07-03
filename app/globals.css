@@ -4,31 +4,115 @@
 
 @layer base {
   :root {
-    --bg: 10 14 26; /* background #0a0e1a */
-    --bg-elevated: 15 21 36; /* surface #0f1524 */
-    --fg: 224 232 240; /* on-surface #e0e8f0 */
-    --muted: 160 180 196; /* on-surface-variant #a0b4c4 */
-    --border: 74 96 112; /* outline #4a6070 */
-    --ring: 125 211 252; /* primary #7dd3fc */
+    /* Light “Glacier flash” theme */
+    --background: 246 250 255; /* #f6faff */
+    --on-background: 12 20 32; /* #0c1420 */
+    --surface: 255 255 255; /* #ffffff */
+    --surface-dim: 238 244 252; /* #eef4fc */
+    --surface-bright: 230 241 252; /* #e6f1fc */
+    --surface-variant: 226 238 250; /* #e2eefa */
+    --surface-container-lowest: 246 250 255;
+    --surface-container-low: 242 248 255;
+    --surface-container: 236 244 252;
+    --surface-container-high: 230 241 252;
+    --surface-container-highest: 222 235 248;
+    --on-surface: 12 20 32;
+    --on-surface-variant: 78 98 122; /* #4e627a */
+    --inverse-surface: 12 20 32;
+    --inverse-on-surface: 246 250 255;
+    --surface-tint: 14 128 186; /* #0e80ba */
+    --outline: 180 205 224; /* #b4cde0 */
+    --outline-variant: 210 227 242; /* #d2e3f2 */
+    --primary: 14 128 186; /* #0e80ba */
+    --on-primary: 255 255 255;
+    --primary-container: 200 234 255; /* #c8eaff */
+    --on-primary-container: 0 40 66; /* #002842 */
+    --primary-fixed: 200 234 255;
+    --primary-fixed-dim: 14 128 186;
+    --on-primary-fixed: 0 40 66;
+    --on-primary-fixed-variant: 0 70 110;
+    --inverse-primary: 125 211 252;
+    --secondary: 60 100 130; /* #3c6482 */
+    --on-secondary: 255 255 255;
+    --secondary-container: 220 235 246; /* #dcebfa */
+    --on-secondary-container: 8 30 48;
+    --secondary-fixed: 220 235 246;
+    --secondary-fixed-dim: 60 100 130;
+    --on-secondary-fixed: 255 255 255;
+    --on-secondary-fixed-variant: 16 44 68;
+    --tertiary: 120 70 170; /* #7846aa */
+    --on-tertiary: 255 255 255;
+    --tertiary-container: 238 220 255; /* #eedcff */
+    --on-tertiary-container: 40 10 70;
+    --tertiary-fixed: 238 220 255;
+    --tertiary-fixed-dim: 120 70 170;
+    --on-tertiary-fixed: 255 255 255;
+    --on-tertiary-fixed-variant: 60 20 100;
+    --error: 200 40 40; /* #c82828 */
+    --on-error: 255 255 255;
+    --error-container: 255 220 220; /* #ffdddd */
+    --on-error-container: 80 0 0;
   }
 
   .dark {
-    --bg: 10 14 26;
-    --bg-elevated: 15 21 36;
-    --fg: 224 232 240;
-    --muted: 160 180 196;
-    --border: 74 96 112;
-    --ring: 125 211 252;
+    /* Dark glacier theme */
+    --background: 10 14 26; /* #0a0e1a */
+    --on-background: 224 232 240; /* #e0e8f0 */
+    --surface: 15 21 36; /* #0f1524 */
+    --surface-dim: 15 19 31; /* #0f131f */
+    --surface-bright: 26 36 56; /* #1a2438 */
+    --surface-variant: 26 36 56; /* #1a2438 */
+    --surface-container-lowest: 10 14 26;
+    --surface-container-low: 17 24 40;
+    --surface-container: 20 28 46;
+    --surface-container-high: 26 36 56;
+    --surface-container-highest: 32 44 66;
+    --on-surface: 224 232 240;
+    --on-surface-variant: 160 180 196; /* #a0b4c4 */
+    --inverse-surface: 224 232 240;
+    --inverse-on-surface: 10 14 26;
+    --surface-tint: 125 211 252; /* #7dd3fc */
+    --outline: 74 96 112; /* #4a6070 */
+    --outline-variant: 42 58 72; /* #2a3a48 */
+    --primary: 125 211 252; /* #7dd3fc */
+    --on-primary: 0 31 46; /* #001f2e */
+    --primary-container: 14 77 110; /* #0e4d6e */
+    --on-primary-container: 200 234 255; /* #c8eaff */
+    --primary-fixed: 200 234 255;
+    --primary-fixed-dim: 125 211 252;
+    --on-primary-fixed: 0 31 46;
+    --on-primary-fixed-variant: 0 77 115;
+    --inverse-primary: 10 76 110;
+    --secondary: 136 180 204; /* #88b4cc */
+    --on-secondary: 0 31 46;
+    --secondary-container: 26 58 78; /* #1a3a4e */
+    --on-secondary-container: 192 216 232; /* #c0d8e8 */
+    --secondary-fixed: 192 216 232;
+    --secondary-fixed-dim: 136 180 204;
+    --on-secondary-fixed: 13 31 43;
+    --on-secondary-fixed-variant: 42 74 94;
+    --tertiary: 200 160 240; /* #c8a0f0 */
+    --on-tertiary: 26 0 46;
+    --tertiary-container: 61 32 96; /* #3d2060 */
+    --on-tertiary-container: 232 208 255; /* #e8d0ff */
+    --tertiary-fixed: 232 208 255;
+    --tertiary-fixed-dim: 200 160 240;
+    --on-tertiary-fixed: 26 0 46;
+    --on-tertiary-fixed-variant: 77 42 115;
+    --error: 255 107 107; /* #ff6b6b */
+    --on-error: 26 0 0;
+    --error-container: 61 20 20; /* #3d1414 */
+    --on-error-container: 255 179 179; /* #ffb3b3 */
   }
 
   * {
-    border-color: rgb(var(--border));
+    border-color: rgb(var(--outline));
   }
 
   html,
   body {
-    background-color: #0a0e1a;
-    color: #e0e8f0;
+    background-color: rgb(var(--background));
+    color: rgb(var(--on-surface));
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -37,7 +121,7 @@
     min-height: 100dvh;
   }
 
-  /* Custom Arctic Glass scrollbar */
+  /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -46,11 +130,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(125, 211, 252, 0.2);
+    background: rgba(var(--surface-tint), 0.25);
     border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(125, 211, 252, 0.4);
+    background: rgba(var(--surface-tint), 0.45);
   }
 
   /* Hide scrollbars on horizontal swipers but keep functionality */
@@ -65,23 +149,23 @@
 
 @layer components {
   .surface {
-    background-color: rgba(15, 21, 36, 0.6);
-    border: 1px solid rgba(125, 211, 252, 0.1);
+    background-color: rgba(var(--surface), 0.7);
+    border: 1px solid rgba(var(--surface-tint), 0.12);
   }
 
   .glass-panel {
-    background: rgba(15, 21, 36, 0.6);
+    background: rgba(var(--surface), 0.7);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(125, 211, 252, 0.1);
+    border: 1px solid rgba(var(--surface-tint), 0.12);
   }
 
   .glass-elevated {
-    background: rgba(15, 21, 36, 0.75);
+    background: rgba(var(--surface), 0.85);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(125, 211, 252, 0.15);
-    box-shadow: 0 0 30px rgba(125, 211, 252, 0.05);
+    border: 1px solid rgba(var(--surface-tint), 0.18);
+    box-shadow: 0 0 30px rgba(var(--surface-tint), 0.06);
   }
 
   .btn {
@@ -90,13 +174,13 @@
 
   .glass-button {
     @apply btn;
-    background: rgba(125, 211, 252, 0.08);
-    border: 1px solid rgba(125, 211, 252, 0.2);
-    color: #7dd3fc;
+    background: rgba(var(--primary), 0.08);
+    border: 1px solid rgba(var(--primary), 0.2);
+    color: rgb(var(--primary));
   }
   .glass-button:hover {
-    background: rgba(125, 211, 252, 0.15);
-    box-shadow: 0 0 15px rgba(125, 211, 252, 0.1);
+    background: rgba(var(--primary), 0.15);
+    box-shadow: 0 0 15px rgba(var(--primary), 0.1);
   }
   .glass-button:active {
     transform: scale(0.98);
@@ -110,11 +194,11 @@
     @apply btn;
     background: transparent;
     border: 1px solid transparent;
-    color: #a0b4c4;
+    color: rgb(var(--on-surface-variant));
   }
   .btn-ghost:hover {
-    background: rgba(125, 211, 252, 0.05);
-    color: #e0e8f0;
+    background: rgba(var(--primary), 0.05);
+    color: rgb(var(--on-surface));
   }
   .btn-ghost:active {
     transform: scale(0.98);
@@ -122,13 +206,13 @@
 
   .btn-danger {
     @apply btn;
-    background: rgba(255, 107, 107, 0.1);
-    border: 1px solid rgba(255, 107, 107, 0.2);
-    color: #ff6b6b;
+    background: rgba(var(--error), 0.1);
+    border: 1px solid rgba(var(--error), 0.2);
+    color: rgb(var(--error));
   }
   .btn-danger:hover {
-    background: rgba(255, 107, 107, 0.15);
-    box-shadow: 0 0 15px rgba(255, 107, 107, 0.1);
+    background: rgba(var(--error), 0.15);
+    box-shadow: 0 0 15px rgba(var(--error), 0.1);
   }
   .btn-danger:active {
     transform: scale(0.98);
@@ -136,16 +220,16 @@
 
   .input {
     @apply w-full rounded-lg border px-3 py-2 text-sm outline-none transition-all;
-    background: rgba(26, 36, 56, 0.4);
-    border-color: rgba(125, 211, 252, 0.1);
-    color: #e0e8f0;
+    background: rgba(var(--surface-bright), 0.5);
+    border-color: rgba(var(--primary), 0.12);
+    color: rgb(var(--on-surface));
   }
   .input::placeholder {
-    color: rgba(160, 180, 196, 0.5);
+    color: rgba(var(--on-surface-variant), 0.55);
   }
   .input:focus {
-    border-color: rgba(125, 211, 252, 0.5);
-    box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.2);
+    border-color: rgba(var(--primary), 0.5);
+    box-shadow: 0 0 0 1px rgba(var(--primary), 0.15);
   }
 
   .card-surface {
@@ -153,7 +237,7 @@
   }
 
   .glow-text {
-    text-shadow: 0 0 10px rgba(125, 211, 252, 0.3);
+    text-shadow: 0 0 10px rgba(var(--primary), 0.3);
   }
 }
 

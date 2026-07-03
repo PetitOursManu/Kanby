@@ -5,6 +5,7 @@ import { useState } from "react";
 import { MobileNav } from "@/components/MobileNav";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type LinkItem = { href: string; label: string; key: string; icon: string };
 
@@ -47,6 +48,7 @@ export function TopBar({
         </div>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <button className="relative flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-primary/5 hover:text-primary">
             <Icon name="notifications" size={18} />
             <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary shadow-glow-sm"></span>

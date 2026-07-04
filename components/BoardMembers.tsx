@@ -5,26 +5,28 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/client";
 import type { BoardData } from "@/types/api";
 
 export function BoardMembers({ board, isOwner }: { board: BoardData; isOwner: boolean }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
 
   return (
     <div className="relative">
-      <div className="flex -space-x-2">
+      <div className="flex -space-x-1.5">
         {board.members.slice(0, 5).map((m) => (
-          <div key={m.userId} className="rounded-full ring-2 ring-background" title={m.user.displayName}>
-            <Avatar name={m.user.displayName} url={m.user.avatarUrl} size={26} />
+          <div key={m.userId} className="rounded-full ring-1 ring-background" title={m.user.displayName}>
+            <Avatar name={m.user.displayName} url={m.user.avatarUrl} size={22} />
           </div>
         ))}
         {isOwner && (
           <button
             onClick={() => setOpen((v) => !v)}
-            className="ml-2 flex h-[26px] w-[26px] items-center justify-center rounded-full border border-primary/30 bg-primary/20 text-primary text-xs transition-colors hover:bg-primary/30"
-            title="Inviter"
+            className="ml-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-primary/30 bg-primary/20 text-primary transition-colors hover:bg-primary/30"
+            title={t("board.invite")}
           >
-            <Icon name="add" size={14} />
+            <Icon name="add" size={12} />
           </button>
         )}
       </div>
@@ -39,6 +41,7 @@ export function BoardMembers({ board, isOwner }: { board: BoardData; isOwner: bo
 }
 
 function InvitePanel({ board, onClose }: { board: BoardData; onClose: () => void }) {
+  const { t } = useI18n();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<{ id: string; displayName: string; email: string; avatarUrl: string | null }[]>([]);
   const [invited, setInvited] = useState<string[]>([]);
@@ -54,7 +57,7 @@ function InvitePanel({ board, onClose }: { board: BoardData; onClose: () => void
   }, [onClose]);
 
   useEffect(() => {
-    const t = setTimeout(async () => {
+    const tm = setTimeout(async () => {
       if (q.trim().length < 2) { setResults([]); return; }
       const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`);
       if (res.ok) {
@@ -62,7 +65,7 @@ function InvitePanel({ board, onClose }: { board: BoardData; onClose: () => void
         setResults(data.users);
       }
     }, 200);
-    return () => clearTimeout(t);
+    return () => clearTimeout(tm);
   }, [q]);
 
   async function invite(userId: string) {
@@ -76,7 +79,7 @@ function InvitePanel({ board, onClose }: { board: BoardData; onClose: () => void
       setInvited((arr) => [...arr, userId]);
     } else {
       const d = await res.json().catch(() => ({}));
-      setError(d.error || "Erreur");
+      setError(d.error || t("misc.error"));
     }
   }
 
@@ -86,14 +89,15 @@ function InvitePanel({ board, onClose }: { board: BoardData; onClose: () => void
       initial={{ opacity: 0, y: -6, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -6, scale: 0.97 }}
-      className="glass-elevated absolute right-0 top-9 z-40 w-72 rounded-xl p-3"
+      className="glass-elevated fixed z-50 w-72 rounded-xl p-3"
+      style={{ top: 56, right: 16 }}
     >
-      <p className="mb-2 text-sm font-medium text-on-surface">Inviter un membre</p>
+      <p className="mb-2 text-sm font-medium text-on-surface">{t("board.inviteMember")}</p>
       <input
         autoFocus
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Nom ou email…"
+        placeholder={t("board.invitePlaceholder")}
         className="input"
       />
       {error && <p className="mt-2 text-xs text-error">{error}</p>}
@@ -110,12 +114,12 @@ function InvitePanel({ board, onClose }: { board: BoardData; onClose: () => void
                 <span className="block truncate font-medium">{u.displayName}</span>
                 <span className="block truncate text-xs text-on-surface-variant">{u.email}</span>
               </span>
-              {invited.includes(u.id) && <span className="ml-auto text-xs text-primary">Ajouté</span>}
+              {invited.includes(u.id) && <span className="ml-auto text-xs text-primary">{t("board.added")}</span>}
             </button>
           </li>
         ))}
         {q.trim().length >= 2 && results.length === 0 && (
-          <li className="px-2 py-3 text-xs text-on-surface-variant">Aucun utilisateur trouvé.</li>
+          <li className="px-2 py-3 text-xs text-on-surface-variant">{t("board.noUsersFound")}</li>
         )}
       </ul>
     </motion.div>

@@ -8,6 +8,7 @@ import { Icon } from "@/components/Icon";
 import { LABEL_COLORS } from "@/lib/constants";
 import { cn, formatDueDate, isOverdue } from "@/lib/utils";
 import { apiPost, apiDelete } from "@/lib/client-api";
+import { useI18n } from "@/lib/i18n/client";
 import type { BoardData, CardDetail, CurrentUser } from "@/types/api";
 
 type Assignee = { id: string; displayName: string; avatarUrl: string | null };
@@ -30,6 +31,7 @@ export function CardModal({
   const [card, setCard] = useState<CardDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const isTeam = board.type === "TEAM";
+  const { t } = useI18n();
 
   useEffect(() => {
     let alive = true;
@@ -40,7 +42,7 @@ export function CardModal({
   }, [cardId]);
 
   async function patch(body: Partial<{
-    title: string; description: string | null; dueDate: string | null; columnId: string;
+    title: string; description: string | null; dueDate: string | null;
   }>) {
     if (!card) return;
     const res = await fetch(`/api/cards/${card.id}`, {
@@ -54,17 +56,30 @@ export function CardModal({
     }
   }
 
+  async function moveCard(columnId: string) {
+    if (!card) return;
+    const res = await fetch(`/api/cards/${card.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ columnId }),
+    });
+    if (res.ok) {
+      // Refetch to get the full updated card (with column, completedAt, etc.)
+      await refetch();
+    }
+  }
+
   if (loading) {
     return (
-      <Modal open onClose={onClose}>
-        <p className="text-sm text-on-surface-variant">Chargement…</p>
+      <Modal open onClose={onClose} frosted>
+        <p className="text-sm text-on-surface-variant">{t("card.loading")}</p>
       </Modal>
     );
   }
   if (!card) return null;
 
   return (
-    <Modal open onClose={onClose} title="Tâche" size="lg">
+    <Modal open onClose={onClose} title={t("card.title")} size="lg" frosted>
       <div className="space-y-5">
         {/* Title */}
         <input
@@ -77,7 +92,7 @@ export function CardModal({
         {/* Meta: due date + column + assignee */}
         <div className="flex flex-wrap gap-3">
           <div>
-            <Label>Date d’échéance</Label>
+            <Label>{t("card.dueDate")}</Label>
             <input
               type="date"
               value={card.dueDate ? new Date(card.dueDate).toISOString().slice(0, 10) : ""}
@@ -91,13 +106,12 @@ export function CardModal({
           </div>
 
           <div>
-            <Label>Colonne</Label>
+            <Label>{t("card.column")}</Label>
             <select
               value={card.column.id}
               onChange={(e) => {
                 const col = board.columns.find((c) => c.id === e.target.value)!;
-                patch({ columnId: col.id });
-                setCard({ ...card, column: { id: col.id, name: col.name, kind: col.kind } });
+                moveCard(col.id);
               }}
               className="input !py-1.5 text-sm"
             >
@@ -126,12 +140,12 @@ export function CardModal({
 
         {/* Description */}
         <div>
-          <Label>Description</Label>
+          <Label>{t("card.description")}</Label>
           <textarea
             value={card.description ?? ""}
             onChange={(e) => setCard({ ...card, description: e.target.value })}
             onBlur={() => patch({ description: card.description })}
-            placeholder="Ajoutez une description…"
+            placeholder={t("card.descriptionPlaceholder")}
             className="input min-h-[80px] resize-y"
           />
         </div>
@@ -150,18 +164,18 @@ export function CardModal({
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-primary/10 pt-4">
           <span className="text-xs text-on-surface-variant">
-            Créée le {new Date(card.createdAt).toLocaleDateString()}
+            {t("card.createdOn", { date: new Date(card.createdAt).toLocaleDateString() })}
           </span>
           <button
             onClick={async () => {
-              if (!confirm("Supprimer cette tâche ?")) return;
+              if (!confirm(t("card.deleteConfirm"))) return;
               await apiDelete(`/api/cards/${card.id}`);
               onCardDeleted(card.id);
               onClose();
             }}
             className="btn-danger text-xs"
           >
-            Supprimer
+            {t("card.delete")}
           </button>
         </div>
       </div>
@@ -191,15 +205,16 @@ function AssigneePicker({
   current: Assignee | null;
   onChange: (userId: string | null) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div>
-      <Label>Assigné à</Label>
+      <Label>{t("card.assignedTo")}</Label>
       <select
         value={current?.id ?? ""}
         onChange={(e) => onChange(e.target.value || null)}
         className="input !py-1.5 text-sm"
       >
-        <option value="">Personne</option>
+        <option value="">{t("card.nobody")}</option>
         {board.members.map((m) => (
           <option key={m.userId} value={m.userId}>{m.user.displayName}</option>
         ))}
@@ -222,6 +237,7 @@ function LabelsSection({
   board: BoardData;
   onChanged: () => void;
 }) {
+  const { t } = useI18n();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState(LABEL_COLORS[0].value);
@@ -243,7 +259,7 @@ function LabelsSection({
 
   return (
     <div>
-      <Label>Étiquettes</Label>
+      <Label>{t("card.labels")}</Label>
       <div className="flex flex-wrap gap-1.5">
         {board.labels.map((label) => {
           const attached = card.labels.some((l) => l.label.id === label.id);
@@ -273,7 +289,7 @@ function LabelsSection({
           onClick={() => setCreating((v) => !v)}
           className="rounded-full border border-primary/10 bg-surface-container px-2.5 py-1 text-xs font-medium text-on-surface-variant transition-colors hover:bg-primary/5 hover:text-primary"
         >
-          + Étiquette
+          {t("card.addLabel")}
         </button>
       </div>
 
@@ -286,7 +302,7 @@ function LabelsSection({
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder="Nom de l’étiquette"
+            placeholder={t("card.labelNamePlaceholder")}
             className="input text-sm"
           />
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -301,8 +317,8 @@ function LabelsSection({
             ))}
           </div>
           <div className="mt-2 flex gap-2">
-            <button onClick={createLabel} className="btn-primary !py-1.5 text-xs">Créer</button>
-            <button onClick={() => setCreating(false)} className="btn-ghost !py-1.5 text-xs">Annuler</button>
+            <button onClick={createLabel} className="btn-primary !py-1.5 text-xs">{t("card.create")}</button>
+            <button onClick={() => setCreating(false)} className="btn-ghost !py-1.5 text-xs">{t("board.cancel")}</button>
           </div>
         </motion.div>
       )}
@@ -317,6 +333,7 @@ function ChecklistSection({
   card: CardDetail;
   onReload: () => void;
 }) {
+  const { t } = useI18n();
   const [newText, setNewText] = useState("");
 
   async function add() {
@@ -374,10 +391,10 @@ function ChecklistSection({
           value={newText}
           onChange={(e) => setNewText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
-          placeholder="Ajouter une sous-tâche…"
+          placeholder={t("card.checklistPlaceholder")}
           className="input !py-1.5 text-sm"
         />
-        <button onClick={add} className="btn-ghost !py-1.5 text-xs shrink-0">Ajouter</button>
+        <button onClick={add} className="btn-ghost !py-1.5 text-xs shrink-0">{t("board.add")}</button>
       </div>
     </div>
   );
@@ -392,6 +409,7 @@ function CommentsSection({
   currentUser: CurrentUser;
   onReload: () => void;
 }) {
+  const { t } = useI18n();
   const [text, setText] = useState("");
 
   async function add() {
@@ -408,7 +426,7 @@ function CommentsSection({
 
   return (
     <div>
-      <Label>Commentaires</Label>
+      <Label>{t("card.comments")}</Label>
       <ul className="space-y-3">
         <AnimatePresence>
           {card.comments.map((c) => (
@@ -445,10 +463,10 @@ function CommentsSection({
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
-          placeholder="Écrire un commentaire…"
+          placeholder={t("card.commentPlaceholder")}
           className="input !py-1.5 text-sm"
         />
-        <button onClick={add} className="btn-primary !py-1.5 text-xs shrink-0">Envoyer</button>
+        <button onClick={add} className="btn-primary !py-1.5 text-xs shrink-0">{t("card.send")}</button>
       </div>
     </div>
   );

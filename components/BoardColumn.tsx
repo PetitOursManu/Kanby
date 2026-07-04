@@ -11,6 +11,7 @@ import { CardItem } from "@/components/CardItem";
 import { Icon } from "@/components/Icon";
 import { LABEL_COLORS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/client";
 import type { ColumnRow, CardRow } from "@/types/api";
 
 export function BoardColumn({
@@ -64,6 +65,8 @@ export function BoardColumn({
   const { attributes, listeners, setNodeRef: setSortableRef, transform, transition, isDragging: colDragging } =
     useSortable({ id: column.id, data: { type: "column" } });
 
+  const { t } = useI18n();
+
   const doneKinds = column.kind === "DONE";
 
   async function submitAdd() {
@@ -105,7 +108,7 @@ export function BoardColumn({
             {...attributes}
             {...listeners}
             className="cursor-grab touch-none text-on-surface-variant transition-colors hover:text-primary"
-            title="Déplacer la colonne"
+            title={t("board.moveColumn")}
           >
             <Icon name="drag_handle" size={14} />
           </button>
@@ -125,7 +128,7 @@ export function BoardColumn({
             onDoubleClick={() => setEditingName(true)}
             onClick={() => canEdit && setEditingName(true)}
             className="flex items-center gap-2 text-sm font-semibold text-on-surface"
-            title="Renommer"
+            title={t("board.renameColumn")}
           >
             {column.color ? (
               <span
@@ -152,7 +155,7 @@ export function BoardColumn({
                 ref={colorBtnRef}
                 onClick={() => setShowColorPicker((v) => !v)}
                 className="rounded-md p-1 text-on-surface-variant transition-colors hover:bg-primary/10 hover:text-primary"
-                title="Couleur de la colonne"
+                title={t("board.columnColor")}
               >
                 <Icon name="color" size={14} />
               </button>
@@ -190,7 +193,7 @@ export function BoardColumn({
                       }}
                       className="mt-2 w-full rounded-md py-1 text-xs text-on-surface-variant hover:bg-primary/5"
                     >
-                      Retirer la couleur
+                      {t("board.removeColor")}
                     </button>
                   </div>
                 </>,
@@ -202,7 +205,7 @@ export function BoardColumn({
             <button
               onClick={() => onDeleteColumn(column.id)}
               className="rounded-md p-1 text-on-surface-variant transition-colors hover:bg-error/10 hover:text-error"
-              title="Supprimer la colonne"
+              title={t("board.deleteColumn")}
             >
               <Icon name="delete" size={14} />
             </button>
@@ -235,12 +238,12 @@ export function BoardColumn({
                     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitAdd(); }
                     if (e.key === "Escape") setAdding(false);
                   }}
-                  placeholder="Titre de la tâche…"
+                  placeholder={t("board.taskTitlePlaceholder")}
                   className="input min-h-[60px] resize-none"
                 />
                 <div className="mt-2 flex gap-2">
-                  <button onClick={submitAdd} className="btn-primary !py-1.5 text-xs">Ajouter</button>
-                  <button onClick={() => setAdding(false)} className="btn-ghost !py-1.5 text-xs">Annuler</button>
+                  <button onClick={submitAdd} className="btn-primary !py-1.5 text-xs">{t("board.add")}</button>
+                  <button onClick={() => setAdding(false)} className="btn-ghost !py-1.5 text-xs">{t("board.cancel")}</button>
                 </div>
               </div>
             ) : (
@@ -248,8 +251,8 @@ export function BoardColumn({
                 onClick={() => setAdding(true)}
                 className="flex w-full items-center gap-1.5 rounded-xl px-2 py-2 text-sm text-on-surface-variant transition-colors hover:bg-primary/5 hover:text-primary"
               >
-                <Icon name="add" size={14} />
-                Ajouter une tâche
+              <Icon name="add" size={14} />
+              {t("board.addTask")}
               </button>
             )}
           </div>

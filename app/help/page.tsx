@@ -2,11 +2,15 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth/session";
 import { AppShell } from "@/components/AppShell";
 import { Icon } from "@/components/Icon";
+import { getServerTranslator } from "@/lib/i18n/server";
 
-export const metadata = {
-  title: "Aide — Kanby",
-  description: "Documentation d'utilisation de Kanby pour utilisateurs et administrateurs.",
-};
+export async function generateMetadata() {
+  const t = getServerTranslator();
+  return {
+    title: t("help.title"),
+    description: t("help.description"),
+  };
+}
 
 function Section({
   icon,
@@ -47,138 +51,120 @@ function Step({ number, title, children }: { number: number; title: string; chil
 export default async function HelpPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
+  const t = getServerTranslator();
 
   return (
     <AppShell active="boards">
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="mb-6">
-          <h1 className="font-headline text-2xl font-semibold text-on-surface">Documentation Kanby</h1>
+          <h1 className="font-headline text-2xl font-semibold text-on-surface">{t("help.h1")}</h1>
           <p className="mt-1 text-sm text-on-surface-variant">
-            Guide d'utilisation pour les utilisateurs et les administrateurs.
+            {t("help.intro")}
           </p>
         </div>
 
-        <Section icon="dashboard" title="Premiers pas">
-          <Step number={1} title="Connexion">
-            Utilisez votre adresse e-mail et votre mot de passe sur la page{" "}
-            <strong>Connexion</strong>. Si vous êtes sur une instance auto-hébergée,
-            l'administrateur vous a créé un compte ou vous pouvez utiliser le compte
-            administrateur par défaut.
+        <Section icon="dashboard" title={t("help.gettingStarted")}>
+          <Step number={1} title={t("help.login")}>
+            {t("help.loginBody")} <strong>{t("auth.login.title")}</strong>. {t("help.loginBody2")}
           </Step>
-          <Step number={2} title="Votre profil">
-            Cliquez sur votre avatar en haut à droite puis sur <strong>Profil</strong>{" "}
-            pour modifier votre nom, votre mot de passe ou votre avatar.
+          <Step number={2} title={t("help.yourProfile")}>
+            {t("help.yourProfileBody")} <strong>{t("nav.profile")}</strong>{" "}
+            {t("help.yourProfileBody2")}
           </Step>
-          <Step number={3} title="Créer un tableau">
-            Depuis la sidebar ou la page <strong>Tableaux</strong>, cliquez sur{" "}
-            <strong>Nouveau tableau</strong> pour démarrer un projet.
+          <Step number={3} title={t("help.createBoard")}>
+            {t("help.createBoardBody")} <strong>{t("nav.boards")}</strong>, {t("help.createBoardBody2")}{" "}
+            <strong>{t("boards.new")}</strong> {t("help.createBoardBody3")}
           </Step>
         </Section>
 
-        <Section icon="view_kanban" title="Gérer vos tableaux">
+        <Section icon="view_kanban" title={t("help.manageBoards")}>
           <p>
-            Un tableau Kanby est composé de <strong>colonnes</strong> (ex. À faire, En cours,
-            Terminé) et de <strong>cartes</strong> (les tâches).
+            {t("help.boardComposed")} <strong>{t("help.columns")}</strong> {t("help.columnsExample")}{" "}
+            <strong>{t("help.cards")}</strong> {t("help.cardsParen")}
           </p>
           <ul className="list-disc space-y-2 pl-5">
             <li>
-              <strong>Ajouter une colonne :</strong> en bas du kanban, cliquez sur{" "}
-              <em>Ajouter une colonne</em>, saisissez le nom puis validez.
+              <strong>{t("help.addColumn")}</strong> {t("help.addColumnBody")}{" "}
+              <em>{t("board.addColumn")}</em>, {t("help.addColumnBody2")}
             </li>
             <li>
-              <strong>Renommer une colonne :</strong> double-cliquez ou cliquez sur le
-              nom de la colonne.
+              <strong>{t("help.renameColumn")}</strong> {t("help.renameColumnBody")}
             </li>
             <li>
-              <strong>Couleur d'une colonne :</strong> cliquez sur l'icône palette à
-              côté du nom pour choisir une couleur ou la retirer.
+              <strong>{t("help.columnColor")}</strong> {t("help.columnColorBody")}
             </li>
             <li>
-              <strong>Supprimer une colonne :</strong> cliquez sur l'icône corbeille.
-              Attention, toutes les cartes de la colonne seront supprimées.
+              <strong>{t("help.deleteColumn")}</strong> {t("help.deleteColumnBody")}
             </li>
             <li>
-              <strong>Réorganiser les colonnes :</strong> glissez-déposez une colonne par
-              sa poignée (icône ≡) pour changer l'ordre.
+              <strong>{t("help.reorderColumns")}</strong> {t("help.reorderColumnsBody")}
             </li>
           </ul>
         </Section>
 
-        <Section icon="checklist" title="Gérer les cartes">
+        <Section icon="checklist" title={t("help.manageCards")}>
           <ul className="list-disc space-y-2 pl-5">
             <li>
-              <strong>Ajouter une carte :</strong> cliquez sur <em>Ajouter une tâche</em>{" "}
-              en bas d'une colonne, saisissez un titre puis validez avec Entrée.
+              <strong>{t("help.addCard")}</strong> {t("help.addCardBody")} <em>{t("board.addTask")}</em>{" "}
+              {t("help.addCardBody2")}
             </li>
             <li>
-              <strong>Déplacer une carte :</strong> glissez-déposez la carte vers une
-              autre colonne ou une autre position. Déposer une carte dans la colonne
-              <em>Terminé</em> déclenche une petite célébration.
+              <strong>{t("help.moveCard")}</strong> {t("help.moveCardBody")}{" "}
+              <em>{t("board.defaultColDone")}</em> {t("help.moveCardBody2")}
             </li>
             <li>
-              <strong>Ouvrir une carte :</strong> cliquez sur une carte pour voir le
-              détail, ajouter une description, des dates, des étiquettes, une checklist
-              ou des commentaires.
+              <strong>{t("help.openCard")}</strong> {t("help.openCardBody")}
             </li>
             <li>
-              <strong>Assigner une carte :</strong> dans le détail d'une carte, sélectionnez
-              un membre du tableau comme responsable.
+              <strong>{t("help.assignCard")}</strong> {t("help.assignCardBody")}
             </li>
             <li>
-              <strong>Checklist :</strong> ajoutez des sous-tâches et cochez-les pour
-              suivre la progression.
+              <strong>{t("help.checklist")}</strong> {t("help.checklistBody")}
             </li>
           </ul>
         </Section>
 
-        <Section icon="group" title="Tableaux d'équipe">
+        <Section icon="group" title={t("help.teamBoards")}>
           <p>
-            Un tableau peut être <strong>Personnel</strong> ou <strong>Équipe</strong>.
-            Seul le propriétaire peut changer le type.
+            {t("help.teamBoardsBody")} <strong>{t("boards.personalFull")}</strong> {t("help.teamBoardsBody2")}{" "}
+            <strong>{t("boards.team")}</strong>. {t("help.teamBoardsBody3")}
           </p>
           <ul className="list-disc space-y-2 pl-5">
             <li>
-              Pour partager un tableau personnel, cliquez sur <em>Rendre en équipe</em>{" "}
-              dans l'en-tête du tableau.
+              {t("help.sharePersonal")} <em>{t("board.makeTeam")}</em>{" "}
+              {t("help.sharePersonalBody")}
             </li>
             <li>
-              Pour inviter des membres, cliquez sur le bouton <strong>Membres</strong>,
-              recherchez un utilisateur par nom ou e-mail, puis validez.
+              {t("help.inviteMembers")} <strong>{t("board.invite")}</strong>,{" "}
+              {t("help.inviteMembersBody")}
             </li>
             <li>
-              Les membres d'un tableau peuvent créer, déplacer et modifier des cartes.
-              Seul le propriétaire peut supprimer le tableau, changer son type et gérer
-              les membres.
+              {t("help.membersCan")}
             </li>
           </ul>
         </Section>
 
-        <Section icon="verified_user" title="Guide administrateur">
+        <Section icon="verified_user" title={t("help.adminGuide")}>
           <p>
-            Les administrateurs globaux ont accès à la page <strong>Admin</strong> via
-            la sidebar. Ils peuvent :
+            {t("help.adminGuideBody")} <strong>{t("nav.admin")}</strong> {t("help.adminGuideBody2")}
           </p>
           <ul className="list-disc space-y-2 pl-5">
-            <li>Voir tous les utilisateurs inscrits sur l'instance.</li>
-            <li>Promouvoir ou rétrograder un utilisateur au rôle administrateur.</li>
-            <li>Désactiver un compte pour empêcher toute connexion.</li>
-            <li>Supprimer définitivement un compte utilisateur.</li>
+            <li>{t("help.adminCan1")}</li>
+            <li>{t("help.adminCan2")}</li>
+            <li>{t("help.adminCan3")}</li>
+            <li>{t("help.adminCan4")}</li>
             <li>
-              Consulter les statistiques d'utilisation (nombre d'utilisateurs, de
-              tableaux et de cartes).
+              {t("help.adminCan5")}
             </li>
           </ul>
           <p className="mt-3 rounded-lg border border-tertiary/20 bg-tertiary/10 p-3 text-tertiary">
-            <strong>Compte admin par défaut :</strong> au premier démarrage, Kanby crée
-            automatiquement un compte administrateur configurable via les variables
-            d'environnement (DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD). Changez ce
-            mot de passe dès la première connexion.
+            <strong>{t("help.defaultAdmin")}</strong> {t("help.defaultAdminBody")}
           </p>
         </Section>
 
-        <Section icon="trending_up" title="Widget Dashy">
+        <Section icon="trending_up" title={t("help.dashyWidget")}>
           <p>
-            Kanby expose un endpoint public pour les tableaux de bord{" "}
+            {t("help.dashyWidgetBody")}{" "}
             <a
               href="https://dashy.to/"
               target="_blank"
@@ -187,41 +173,37 @@ export default async function HelpPage() {
             >
               Dashy
             </a>{" "}
-            grâce à un token API personnel.
+            {t("help.dashyWidgetBody2")}
           </p>
           <ul className="list-disc space-y-2 pl-5">
             <li>
-              Rendez-vous dans <strong>Profil &gt; Tokens API</strong> pour générer un
-              token.
+              {t("help.dashyWidgetBody3")} <strong>{t("nav.profile")} &gt; {t("profile.tokens")}</strong>{" "}
+              {t("help.dashyWidgetBody3")}
             </li>
             <li>
-              Utilisez l'URL <code>/api/widget/summary?token=VOTRE_TOKEN</code> dans un
-              widget de type <em>API/JSON</em> de Dashy.
+              {t("help.dashyWidgetBody4")} <code>/api/widget/summary?token=YOUR_TOKEN</code>{" "}
+              {t("help.dashyWidgetBody4")} <em>API/JSON</em> {t("help.dashyWidgetBody5")}
             </li>
             <li>
-              Le token ne donne accès qu'à un résumé public de vos tâches (total,
-              terminées, en cours) et ne touche jamais à votre session.
+              {t("help.dashyWidgetBody6")}
             </li>
           </ul>
         </Section>
 
-        <Section icon="settings" title="Astuces">
+        <Section icon="settings" title={t("help.tips")}>
           <ul className="list-disc space-y-2 pl-5">
             <li>
-              <strong>Navigation rapide :</strong> au-dessus du kanban, une barre de
-              puces permet de sauter directement à une colonne.
+              <strong>{t("help.quickNav")}</strong> {t("help.quickNavBody")}
             </li>
             <li>
-              <strong>Mode sombre/clair :</strong> utilisez le bouton en forme de soleil/
-              lune pour basculer le thème.
+              <strong>{t("help.darkLight")}</strong> {t("help.darkLightBody")}
             </li>
             <li>
-              <strong>Mobile :</strong> sur petit écran, la sidebar est remplacée par un
-              menu accessible depuis l'icône en haut à gauche.
+              <strong>{t("help.mobile")}</strong> {t("help.mobileBody")}
             </li>
             <li>
-              <strong>Déconnexion :</strong> cliquez sur <em>Déconnexion</em> en bas de
-              la sidebar pour quitter votre session.
+              <strong>{t("help.logout")}</strong> {t("help.logoutBody")} <em>{t("nav.logout")}</em>{" "}
+              {t("help.logoutBody2")}
             </li>
           </ul>
         </Section>

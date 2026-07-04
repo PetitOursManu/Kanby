@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/client";
 
 export function LogoutButton({
   className,
@@ -11,6 +12,7 @@ export function LogoutButton({
   className?: string;
   showLabel?: boolean;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -20,8 +22,8 @@ export function LogoutButton({
   return (
     <button
       onClick={logout}
-      aria-label="Déconnexion"
-      title="Déconnexion"
+      aria-label={t("nav.logout")}
+      title={t("nav.logout")}
       className={cn(
         "transition-colors",
         showLabel
@@ -31,7 +33,7 @@ export function LogoutButton({
       )}
     >
       <Icon name="logout" size={18} />
-      {showLabel && <span>Déconnexion</span>}
+      {showLabel && <span>{t("nav.logout")}</span>}
     </button>
   );
 }

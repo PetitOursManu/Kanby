@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBoardMember, requireBoardOwner } from "@/lib/auth-guard";
+import { notifyBoardMembers } from "@/lib/notify";
 
 export const runtime = "nodejs";
 
@@ -49,5 +50,14 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const auth = await requireBoardOwner(req, column.boardId);
   if ("error" in auth) return auth.error;
   await prisma.column.delete({ where: { id: params.id } });
+
+  await notifyBoardMembers({
+    req,
+    boardId: column.boardId,
+    actorId: auth.user.id,
+    kind: "column_deleted",
+    messageKey: "notif.column_deleted",
+  });
+
   return NextResponse.json({ ok: true });
 }

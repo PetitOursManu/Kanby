@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AuthShell, Field, ErrorShake } from "@/app/login/LoginForm";
+import { useI18n } from "@/lib/i18n/client";
 
 export function RegisterForm() {
+  const { t } = useI18n();
   const router = useRouter();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -25,7 +27,7 @@ export function RegisterForm() {
     setLoading(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error || "Inscription échouée");
+      setError(data.error || t("auth.register.failed"));
       return;
     }
     router.push("/boards");
@@ -33,18 +35,18 @@ export function RegisterForm() {
   }
 
   return (
-    <AuthShell title="Créer un compte" subtitle="Une minute suffit pour commencer.">
+    <AuthShell title={t("auth.register.title")} subtitle={t("auth.register.subtitle")}>
       <form onSubmit={onSubmit} className="space-y-4">
-        <Field label="Nom affiché">
+        <Field label={t("auth.register.displayName")}>
           <input
             required
             className="input"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Votre nom"
+            placeholder={t("auth.register.displayNamePlaceholder")}
           />
         </Field>
-        <Field label="Email">
+        <Field label={t("auth.register.email")}>
           <input
             type="email"
             autoComplete="email"
@@ -52,10 +54,10 @@ export function RegisterForm() {
             className="input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="vous@exemple.com"
+            placeholder={t("auth.register.emailPlaceholder")}
           />
         </Field>
-        <Field label="Mot de passe (8 caractères min.)">
+        <Field label={t("auth.register.password")}>
           <input
             type="password"
             autoComplete="new-password"
@@ -69,14 +71,14 @@ export function RegisterForm() {
         {error && <ErrorShake message={error} />}
 
         <button type="submit" disabled={loading} className="btn-primary w-full">
-          {loading ? "Création…" : "Créer le compte"}
+          {loading ? t("auth.register.submitting") : t("auth.register.submit")}
         </button>
       </form>
 
       <p className="mt-6 text-center text-sm text-on-surface-variant">
-        Déjà un compte ?{" "}
+        {t("auth.register.hasAccount")}{" "}
         <Link href="/login" className="font-medium text-primary hover:underline">
-          Se connecter
+          {t("auth.register.loginLink")}
         </Link>
       </p>
     </AuthShell>

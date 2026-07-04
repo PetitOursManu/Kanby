@@ -13,7 +13,7 @@ export function CardItem({ card, onClick }: { card: CardRow; onClick: () => void
   const checklistDone = (card.checklist ?? []).filter((i) => i.done).length;
 
   return (
-    <motion.button
+    <motion.div
       layout
       layoutId={`card-${card.id}`}
       onClick={onClick}
@@ -21,8 +21,8 @@ export function CardItem({ card, onClick }: { card: CardRow; onClick: () => void
       whileTap={{ scale: 0.99 }}
       transition={{ type: "spring", stiffness: 400, damping: 28 }}
       className={cn(
-        "glass-elevated w-full cursor-grab rounded-xl p-3 text-left active:cursor-grabbing",
-        "hover:border-primary/30 hover:shadow-glow-sm",
+        "glass-card w-full cursor-grab rounded-xl p-3 text-left transition-all active:cursor-grabbing",
+        "hover:border-primary/40 hover:shadow-glow-sm",
         card.completedAt && "opacity-60",
       )}
     >
@@ -90,6 +90,6 @@ export function CardItem({ card, onClick }: { card: CardRow; onClick: () => void
           />
         </div>
       )}
-    </motion.button>
+    </motion.div>
   );
 }

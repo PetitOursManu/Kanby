@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-guard";
+import { getTranslator, parseLocale, LOCALE_COOKIE } from "@/lib/i18n";
 
 export const runtime = "nodejs";
 
@@ -49,6 +50,9 @@ export async function POST(req: NextRequest) {
   if (!name) return NextResponse.json({ error: "Nom requis" }, { status: 400 });
   const type = body.type === "TEAM" ? "TEAM" : "PERSONAL";
 
+  const locale = parseLocale(req.cookies.get(LOCALE_COOKIE)?.value);
+  const t = getTranslator(locale);
+
   const board = await prisma.board.create({
     data: {
       name,
@@ -59,9 +63,9 @@ export async function POST(req: NextRequest) {
         : undefined,
       columns: {
         create: [
-          { name: "À faire", kind: "TODO", order: 0 },
-          { name: "En cours", kind: "DOING", order: 1 },
-          { name: "Terminé", kind: "DONE", order: 2 },
+          { name: t("board.defaultColTodo"), kind: "TODO", order: 0 },
+          { name: t("board.defaultColDoing"), kind: "DOING", order: 1 },
+          { name: t("board.defaultColDone"), kind: "DONE", order: 2 },
         ],
       },
     },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBoardMember } from "@/lib/auth-guard";
+import { notifyBoardMembers } from "@/lib/notify";
 
 export const runtime = "nodejs";
 
@@ -65,9 +66,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (body.dueDate !== undefined) data.dueDate = body.dueDate ? new Date(body.dueDate) : null;
   if (typeof body.order === "number") data.order = body.order;
 
-  // Moving to a different column: validate membership on the target column's
-  // board too, and set/clear completedAt based on the target column's kind.
-  if (typeof body.columnId === "string" && body.columnId !== ctx.card.boardId) {
+  // Moving to a different column: validate the target column exists and set
+  // or clear completedAt based on the target column's kind.
+  if (typeof body.columnId === "string") {
     const targetColumn = await prisma.column.findUnique({ where: { id: body.columnId } });
     if (!targetColumn) return NextResponse.json({ error: "Colonne cible introuvable" }, { status: 404 });
     data.columnId = body.columnId;
@@ -75,6 +76,32 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 
   const card = await prisma.card.update({ where: { id: params.id }, data });
+
+  // Emit notifications for team boards.
+  const movedColumn = typeof body.columnId === "string";
+  const updatedFields = body.title !== undefined || body.description !== undefined || body.dueDate !== undefined;
+  if (movedColumn) {
+    await notifyBoardMembers({
+      req,
+      boardId: ctx.card.boardId,
+      actorId: ctx.user.id,
+      cardId: params.id,
+      kind: "card_moved",
+      messageKey: "notif.card_moved",
+      vars: { card: card.title },
+    });
+  } else if (updatedFields) {
+    await notifyBoardMembers({
+      req,
+      boardId: ctx.card.boardId,
+      actorId: ctx.user.id,
+      cardId: params.id,
+      kind: "card_updated",
+      messageKey: "notif.card_updated",
+      vars: { card: card.title },
+    });
+  }
+
   return NextResponse.json({ card });
 }
 

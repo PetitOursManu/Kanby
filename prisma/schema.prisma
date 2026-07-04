@@ -52,6 +52,8 @@ model User {
   assignedCards    Card[]         @relation("CardAssignee")
   comments         Comment[]
   apiTokens        ApiToken[]
+  notifications    Notification[]
+  triggeredNotifs  Notification[] @relation("NotificationActor")
 
   @@index([globalRole])
 }
@@ -83,6 +85,7 @@ model Board {
   labels    Label[]
   members   BoardMember[]
   cards     Card[]
+  notifications Notification[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -135,6 +138,7 @@ model Card {
   labels      CardLabel[]
   checklist   ChecklistItem[]
   comments    Comment[]
+  notifications Notification[]
   /// Set when the card is moved into a DONE column.
   completedAt DateTime?
   createdAt   DateTime   @default(now())
@@ -187,4 +191,32 @@ model Comment {
   createdAt DateTime @default(now())
 
   @@index([cardId, createdAt])
+}
+
+/// Notification sent to a user about board activity (team boards only).
+model Notification {
+  id        String   @id @default(cuid())
+  /// Recipient of the notification (never the actor).
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  /// User who performed the action (null for system-generated events).
+  actor     User?    @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorId   String?
+  /// Board the event happened on (null if the board was deleted).
+  board     Board?   @relation(fields: [boardId], references: [id], onDelete: SetNull)
+  boardId   String?
+  /// Card the event happened on (null if the card was deleted / not relevant).
+  card      Card?    @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  cardId    String?
+  /// Kind of event: card_assigned, card_updated, card_moved, card_commented,
+  /// member_added, member_removed, board_updated.
+  kind      String
+  /// Short human-readable message (already localized for the recipient).
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@index([boardId])
 }

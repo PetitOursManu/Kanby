@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBoardMember } from "@/lib/auth-guard";
+import { notifyBoardMembers } from "@/lib/notify";
 
 export const runtime = "nodejs";
 
@@ -41,5 +42,14 @@ export async function POST(req: NextRequest) {
       },
     },
   });
+
+  await notifyBoardMembers({
+    req,
+    boardId,
+    actorId: auth.user.id,
+    kind: "column_added",
+    messageKey: "notif.column_added",
+  });
+
   return NextResponse.json({ column }, { status: 201 });
 }

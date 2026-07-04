@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/client";
 
 type Stats = { users: number; boards: number; activeTasks: number; completedTasks: number };
 type AdminUser = {
@@ -30,6 +31,7 @@ export function AdminPanel({
   stats: Stats;
   currentUserId: string;
 }) {
+  const { t } = useI18n();
   const [userList, setUserList] = useState(users);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -40,31 +42,31 @@ export function AdminPanel({
         <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-tertiary to-transparent"></div>
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-on-surface glow-text">Administration</h1>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-on-surface-variant">Vue d’ensemble de l’instance Kanby</p>
+            <h1 className="text-3xl font-bold tracking-tight text-on-surface glow-text">{t("admin.title")}</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-on-surface-variant">{t("admin.subtitle")}</p>
           </div>
           <button onClick={() => setShowCreate(true)} className="btn-primary">
             <Icon name="person_add" size={16} />
-            Créer un utilisateur
+            {t("admin.createUser")}
           </button>
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Utilisateurs" value={stats.users} icon="group" />
-        <StatCard label="Tableaux" value={stats.boards} icon="view_kanban" />
-        <StatCard label="Tâches actives" value={stats.activeTasks} icon="trending_up" />
-        <StatCard label="Tâches terminées" value={stats.completedTasks} icon="check_circle" />
+        <StatCard label={t("admin.users")} value={stats.users} icon="group" />
+        <StatCard label={t("admin.boards")} value={stats.boards} icon="view_kanban" />
+        <StatCard label={t("admin.activeTasks")} value={stats.activeTasks} icon="trending_up" />
+        <StatCard label={t("admin.completedTasks")} value={stats.completedTasks} icon="check_circle" />
       </div>
 
       {/* Two columns */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <section className="glass-elevated flex flex-col overflow-hidden rounded-xl">
           <div className="flex items-center justify-between border-b border-primary/10 bg-primary/5 px-6 py-4">
-            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-primary glow-text">Utilisateurs</h2>
+            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-primary glow-text">{t("admin.users")}</h2>
             <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
-              {userList.length} total
+              {userList.length} {t("admin.total")}
             </span>
           </div>
           <ul className="divide-y divide-primary/5">
@@ -81,9 +83,9 @@ export function AdminPanel({
 
         <section className="glass-elevated flex flex-col overflow-hidden rounded-xl">
           <div className="flex items-center justify-between border-b border-primary/10 bg-primary/5 px-6 py-4">
-            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-primary glow-text">Tous les tableaux</h2>
+            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-primary glow-text">{t("admin.allBoards")}</h2>
             <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
-              {boards.length} total
+              {boards.length} {t("admin.total")}
             </span>
           </div>
           <div className="flex-1 overflow-auto p-4">
@@ -107,7 +109,7 @@ export function AdminPanel({
                             ? "border-tertiary/20 bg-tertiary/10 text-tertiary"
                             : "border-primary/20 bg-primary/10 text-primary",
                         )}>
-                          {b.type === "TEAM" ? "Équipe" : "Perso"}
+                          {b.type === "TEAM" ? t("boards.team") : t("boards.personal")}
                         </span>
                         <span className="flex items-center gap-1">
                           <Icon name="group" size={12} /> {b._count.members}
@@ -116,7 +118,7 @@ export function AdminPanel({
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Propriétaire</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">{t("boards.owner")}</p>
                     <p className={cn("text-sm font-medium", b.owner.id === currentUserId ? "text-primary" : "text-on-surface")}>
                       {b.owner.displayName}
                     </p>
@@ -124,7 +126,7 @@ export function AdminPanel({
                 </Link>
               ))}
               {boards.length === 0 && (
-                <p className="py-6 text-center text-sm text-on-surface-variant">Aucun tableau.</p>
+                <p className="py-6 text-center text-sm text-on-surface-variant">{t("admin.noBoards")}</p>
               )}
             </div>
           </div>
@@ -164,6 +166,7 @@ function StatCard({ label, value, icon }: { label: string; value: number; icon: 
 }
 
 function UserRow({ user, isSelf, onRemoved }: { user: AdminUser; isSelf: boolean; onRemoved: () => void }) {
+  const { t } = useI18n();
   const [active, setActive] = useState(user.active);
 
   async function toggle() {
@@ -176,7 +179,7 @@ function UserRow({ user, isSelf, onRemoved }: { user: AdminUser; isSelf: boolean
   }
 
   async function remove() {
-    if (!confirm(`Supprimer le compte de ${user.displayName} ? Cette action est irréversible.`)) return;
+    if (!confirm(t("admin.deleteUserConfirm", { name: user.displayName }))) return;
     await fetch(`/api/admin/users/${user.id}`, { method: "DELETE" });
     onRemoved();
   }
@@ -188,10 +191,10 @@ function UserRow({ user, isSelf, onRemoved }: { user: AdminUser; isSelf: boolean
         <div>
           <p className={cn("text-sm font-semibold", isSelf ? "text-primary glow-text" : "text-on-surface")}>
             {user.displayName}
-            {isSelf && <span className="ml-2 text-xs text-on-surface-variant">(vous)</span>}
+            {isSelf && <span className="ml-2 text-xs text-on-surface-variant">{t("admin.you")}</span>}
           </p>
           <p className="text-xs text-on-surface-variant">
-            {user.email} · {user.globalRole === "ADMIN" ? "Admin" : "Utilisateur"} · {user._count.ownedBoards} tableaux
+            {user.email} · {user.globalRole === "ADMIN" ? t("admin.adminRole") : t("admin.userRole")} · {t("admin.boardsCount", { count: user._count.ownedBoards })}
           </p>
         </div>
       </div>
@@ -205,7 +208,7 @@ function UserRow({ user, isSelf, onRemoved }: { user: AdminUser; isSelf: boolean
               : "border-on-surface-variant/20 bg-surface-container text-on-surface-variant",
           )}
         >
-          {active ? "Actif" : "Désactivé"}
+          {active ? t("admin.active") : t("admin.inactive")}
         </span>
 
         {!isSelf ? (
@@ -213,14 +216,14 @@ function UserRow({ user, isSelf, onRemoved }: { user: AdminUser; isSelf: boolean
             <button
               onClick={toggle}
               className="rounded-md p-1.5 text-on-surface-variant transition-colors hover:bg-primary/10 hover:text-primary"
-              title={active ? "Désactiver" : "Activer"}
+              title={active ? t("admin.deactivate") : t("admin.activate")}
             >
               <Icon name={active ? "toggle_on" : "toggle_on"} size={18} />
             </button>
             <button
               onClick={remove}
               className="rounded-md p-1.5 text-on-surface-variant transition-colors hover:bg-error/10 hover:text-error"
-              title="Supprimer"
+              title={t("admin.delete")}
             >
               <Icon name="delete" size={18} />
             </button>
@@ -236,6 +239,7 @@ function UserRow({ user, isSelf, onRemoved }: { user: AdminUser; isSelf: boolean
 }
 
 function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: (u: AdminUser) => void }) {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
@@ -246,11 +250,11 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
   async function submit() {
     setError("");
     if (!email.trim() || !displayName.trim() || !password) {
-      setError("Tous les champs sont requis");
+      setError(t("admin.allFieldsRequired"));
       return;
     }
     if (password.length < 6) {
-      setError("Le mot de passe doit faire au moins 6 caractères");
+      setError(t("api.adminPasswordTooShort"));
       return;
     }
     setLoading(true);
@@ -267,12 +271,12 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Erreur lors de la création");
+        setError(data.error || t("admin.createError"));
         return;
       }
       onCreated(data.user);
     } catch {
-      setError("Erreur réseau");
+      setError(t("api.networkError"));
     } finally {
       setLoading(false);
     }
@@ -295,7 +299,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
         className="glass-elevated w-full max-w-md space-y-4 rounded-t-2xl p-5 md:rounded-2xl"
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-on-surface">Créer un utilisateur</h2>
+          <h2 className="text-lg font-semibold text-on-surface">{t("admin.createModal.title")}</h2>
           <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">
             <Icon name="close" size={20} />
           </button>
@@ -304,17 +308,17 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
         {error && <p className="rounded-lg border border-error/20 bg-error/10 px-3 py-2 text-sm text-error">{error}</p>}
 
         <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Nom affiché</label>
-          <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="input" placeholder="Jean Dupont" />
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">{t("admin.createModal.displayName")}</label>
+          <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="input" placeholder={t("admin.createModal.displayNamePlaceholder")} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Email</label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="input" placeholder="jean@exemple.fr" />
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">{t("admin.createModal.email")}</label>
+          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="input" placeholder={t("admin.createModal.emailPlaceholder")} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">Mot de passe</label>
-          <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="input" placeholder="••••••••" />
-          <p className="mt-1 text-xs text-on-surface-variant">L'utilisateur devra le changer à sa première connexion.</p>
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">{t("admin.createModal.password")}</label>
+          <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="input" placeholder={t("admin.createModal.passwordPlaceholder")} />
+          <p className="mt-1 text-xs text-on-surface-variant">{t("admin.createModal.mustChange")}</p>
         </div>
         <label className="flex items-center gap-2 text-sm text-on-surface">
           <input
@@ -323,14 +327,14 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
             onChange={(e) => setIsAdmin(e.target.checked)}
             className="h-4 w-4 rounded border-primary/30 bg-surface-container accent-primary"
           />
-          Administrateur
+          {t("admin.createModal.isAdmin")}
         </label>
 
         <div className="flex gap-2">
           <button onClick={submit} disabled={loading} className="btn-primary flex-1">
-            {loading ? "Création…" : "Créer"}
+            {loading ? t("admin.createModal.submitting") : t("admin.createModal.submit")}
           </button>
-          <button onClick={onClose} className="btn-ghost">Annuler</button>
+          <button onClick={onClose} className="btn-ghost">{t("admin.createModal.cancel")}</button>
         </div>
       </motion.div>
     </motion.div>

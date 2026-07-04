@@ -6,8 +6,8 @@ import { BoardHeader } from "@/components/BoardHeader";
 import { DndBoard } from "@/components/DndBoard";
 import { CardModal } from "@/components/CardModal";
 import { ConfettiOnDoneDrop } from "@/components/ConfettiOnDoneDrop";
-import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/client";
 import { apiPost } from "@/lib/client-api";
 import type { BoardData, CardRow, ColumnRow, CurrentUser, CardDetail } from "@/types/api";
 
@@ -28,12 +28,13 @@ export function BoardView({
   const [boardName, setBoardName] = useState(board.name);
   const [boardType, setBoardType] = useState(board.type);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const { t } = useI18n();
 
   // Re-fetch the full board after structural changes (labels/members).
   const liveBoard: BoardData = { ...board, name: boardName, type: boardType, columns, labels, members };
 
   async function addColumn() {
-    const name = prompt("Nom de la colonne");
+    const name = prompt(t("board.columnNamePrompt"));
     if (!name?.trim()) return;
     const { column } = await apiPost<{ column: ColumnRow }>("/api/columns", {
       boardId: board.id,
@@ -63,68 +64,64 @@ export function BoardView({
   }
 
   return (
-    <div className="flex h-[calc(100dvh-4rem)] flex-col">
+    <div className="flex h-[calc(100dvh-4rem)] flex-col overflow-hidden px-4 pb-4 md:px-6">
       <ConfettiOnDoneDrop />
 
-      <BoardHeader
-        board={liveBoard}
-        isOwner={isOwner}
-        onUpdateName={updateBoardName}
-        onToggleType={toggleType}
-      />
+      <div className="flex shrink-0 flex-col">
+        <BoardHeader
+          board={liveBoard}
+          isOwner={isOwner}
+          onUpdateName={updateBoardName}
+          onToggleType={toggleType}
+        />
 
-      {/* Column quick-nav */}
-      {columns.length > 0 && (
-        <div className="no-scrollbar mb-3 flex gap-2 overflow-x-auto pb-1">
-          {columns.map((col) => (
-            <button
-              key={col.id}
-              onClick={() =>
-                document
-                  .getElementById(`col-${col.id}`)
-                  ?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" })
-              }
-              className="flex shrink-0 items-center gap-1.5 rounded-full border border-primary/10 bg-surface/40 px-3 py-1 text-xs font-medium text-on-surface-variant transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
-              title={`Aller à : ${col.name}`}
-            >
-              {col.color ? (
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: col.color }}
-                />
-              ) : (
-                <span
-                  className={cn(
-                    "h-2 w-2 rounded-full",
-                    col.kind === "DONE"
-                      ? "bg-emerald-500"
-                      : col.kind === "DOING"
-                        ? "bg-amber-500"
-                        : "bg-on-surface-variant",
-                  )}
-                />
-              )}
-              {col.name}
-            </button>
-          ))}
-        </div>
-      )}
+        {/* Column quick-nav */}
+        {columns.length > 0 && (
+          <div className="no-scrollbar mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
+            {columns.map((col) => (
+              <button
+                key={col.id}
+                onClick={() =>
+                  document
+                    .getElementById(`col-${col.id}`)
+                    ?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" })
+                }
+                className="flex shrink-0 items-center gap-1.5 rounded-full border border-primary/10 bg-surface/40 px-3 py-1 text-xs font-medium text-on-surface-variant transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
+                title={t("board.goTo", { name: col.name })}
+              >
+                {col.color ? (
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: col.color }}
+                  />
+                ) : (
+                  <span
+                    className={cn(
+                      "h-2 w-2 rounded-full",
+                      col.kind === "DONE"
+                        ? "bg-emerald-500"
+                        : col.kind === "DOING"
+                          ? "bg-amber-500"
+                          : "bg-on-surface-variant",
+                    )}
+                  />
+                )}
+                {col.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <DndBoard
           columns={columns}
           setColumns={setColumns}
           canEdit={canEdit}
           onCardClick={(card) => setSelectedCardId(card.id)}
+          onAddColumn={canEdit ? addColumn : undefined}
         />
       </div>
-
-      {canEdit && (
-        <button onClick={addColumn} className="btn-ghost mt-4 shrink-0 text-sm">
-          <Icon name="add" size={14} />
-          Ajouter une colonne
-        </button>
-      )}
 
       <AnimatePresence>
         {selectedCardId && (
@@ -134,28 +131,37 @@ export function BoardView({
             currentUser={currentUser}
             onClose={() => setSelectedCardId(null)}
             onCardUpdated={(updated: CardDetail) => {
-              setColumns((cols) =>
-                cols.map((c) => ({
+              setColumns((cols) => {
+                // Remove the card from its current column (wherever it is).
+                const withoutCard = cols.map((c) => ({
                   ...c,
-                  cards: c.cards.map((card) =>
-                    card.id === updated.id
-                      ? {
-                          ...card,
-                          title: updated.title,
-                          dueDate: updated.dueDate,
-                          completedAt: updated.completedAt,
-                          assignee: updated.assignee,
-                          labels: updated.labels,
-                          checklist: updated.checklist.map((i) => ({ done: i.done })),
-                          _count: {
-                            checklist: updated.checklist.length,
-                            comments: updated.comments.length,
-                          },
-                        }
-                      : card,
-                  ),
-                })),
-              );
+                  cards: c.cards.filter((card) => card.id !== updated.id),
+                }));
+                // Find the target column from the updated card's column id.
+                const targetCol = withoutCard.find((c) => c.id === updated.column.id);
+                if (!targetCol) return withoutCard;
+
+                const updatedRow: CardRow = {
+                  ...updated,
+                  labels: updated.labels,
+                  assignee: updated.assignee,
+                  checklist: updated.checklist.map((i) => ({ done: i.done })),
+                  _count: {
+                    checklist: updated.checklist.length,
+                    comments: updated.comments.length,
+                  },
+                  boardId: targetCol.boardId,
+                  columnId: targetCol.id,
+                };
+                // Append to the end of the target column and re-index.
+                const newCards = [...targetCol.cards, updatedRow].map((card, i) => ({
+                  ...card,
+                  order: i,
+                }));
+                return withoutCard.map((c) =>
+                  c.id === targetCol.id ? { ...c, cards: newCards } : c,
+                );
+              });
             }}
             onCardDeleted={(cardId) => {
               setColumns((cols) =>

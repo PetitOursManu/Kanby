@@ -6,6 +6,8 @@ import { MobileNav } from "@/components/MobileNav";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificationsBell } from "@/components/NotificationsBell";
+import { useI18n } from "@/lib/i18n/client";
 
 type LinkItem = { href: string; label: string; key: string; icon: string };
 
@@ -18,6 +20,7 @@ export function TopBar({
   links: LinkItem[];
   active?: string;
 }) {
+  const { t } = useI18n();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -26,7 +29,7 @@ export function TopBar({
         <div className="flex items-center gap-4">
           <button
             onClick={() => setMobileOpen(true)}
-            aria-label="Ouvrir le menu"
+            aria-label={t("nav.openMenu")}
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/20 text-on-surface-variant transition-colors hover:bg-primary/5 hover:text-primary md:hidden"
           >
             <Icon name="menu" size={20} />
@@ -41,7 +44,7 @@ export function TopBar({
             <input
               type="text"
               readOnly
-              placeholder="Rechercher..."
+              placeholder={t("nav.search")}
               className="w-full rounded-full border border-primary/10 bg-surface-dim/50 py-1.5 pl-9 pr-4 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary/40 focus:bg-surface-dim/80 focus:outline-none"
             />
           </div>
@@ -49,10 +52,7 @@ export function TopBar({
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <button className="relative flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-primary/5 hover:text-primary">
-            <Icon name="notifications" size={18} />
-            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary shadow-glow-sm"></span>
-          </button>
+          <NotificationsBell />
           <Link
             href="/profile"
             className="ml-1 flex items-center gap-2 rounded-full py-1 pl-1 transition-colors sm:border sm:border-primary/20 sm:bg-surface-container/50 sm:pr-3 sm:hover:border-primary/40"

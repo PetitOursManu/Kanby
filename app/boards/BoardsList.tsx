@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Modal } from "@/components/Modal";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/client";
 
 type BoardItem = {
   id: string;
@@ -16,6 +17,7 @@ type BoardItem = {
 };
 
 export function BoardsList({ owned, member }: { owned: BoardItem[]; member: BoardItem[] }) {
+  const { t } = useI18n();
   const [creating, setCreating] = useState(false);
 
   return (
@@ -25,24 +27,24 @@ export function BoardsList({ owned, member }: { owned: BoardItem[]; member: Boar
         <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-primary to-transparent"></div>
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-on-surface">Mes tableaux</h1>
-            <p className="text-sm text-on-surface-variant">Vos tableaux personnels et d’équipe.</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-on-surface">{t("boards.title")}</h1>
+            <p className="text-sm text-on-surface-variant">{t("boards.subtitle")}</p>
           </div>
           <button onClick={() => setCreating(true)} className="btn-primary">
             <Icon name="add" size={16} />
-            Nouveau tableau
+            {t("boards.new")}
           </button>
         </div>
       </div>
 
       {owned.length > 0 && (
-        <Section title="Tableaux personnels & possédés">
+        <Section title={t("boards.personalOwned")}>
           <Grid items={owned} />
         </Section>
       )}
 
       {member.length > 0 && (
-        <Section title="Tableaux d’équipe partagés">
+        <Section title={t("boards.teamShared")}>
           <Grid items={member} />
         </Section>
       )}
@@ -53,11 +55,11 @@ export function BoardsList({ owned, member }: { owned: BoardItem[]; member: Boar
             <Icon name="add" size={28} />
           </div>
           <div>
-            <p className="font-medium text-on-surface">Aucun tableau pour l’instant</p>
-            <p className="text-sm text-on-surface-variant">Créez votre premier tableau Kanban.</p>
+            <p className="font-medium text-on-surface">{t("boards.empty")}</p>
+            <p className="text-sm text-on-surface-variant">{t("boards.emptyHint")}</p>
           </div>
           <button onClick={() => setCreating(true)} className="btn-primary">
-            Créer un tableau
+            {t("boards.create")}
           </button>
         </div>
       )}
@@ -77,6 +79,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Grid({ items }: { items: BoardItem[] }) {
+  const { t } = useI18n();
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <AnimatePresence>
@@ -96,11 +99,11 @@ function Grid({ items }: { items: BoardItem[] }) {
                       : "bg-primary/10 text-primary border-primary/20",
                   )}
                 >
-                  {b.type === "TEAM" ? "Équipe" : "Perso"}
+                  {b.type === "TEAM" ? t("boards.team") : t("boards.personal")}
                 </span>
               </div>
               <p className="mt-3 text-xs text-on-surface-variant">
-                {b.cardsCount} tâche{b.cardsCount > 1 ? "s" : ""} · {b.role === "OWNER" ? "Propriétaire" : "Membre"}
+                {b.cardsCount} {b.cardsCount > 1 ? t("boards.tasks") : t("boards.task")} · {b.role === "OWNER" ? t("boards.owner") : t("boards.member")}
               </p>
             </Link>
           </motion.div>
@@ -111,6 +114,7 @@ function Grid({ items }: { items: BoardItem[] }) {
 }
 
 function CreateBoardModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [type, setType] = useState<"PERSONAL" | "TEAM">("PERSONAL");
   const [saving, setSaving] = useState(false);
@@ -130,42 +134,42 @@ function CreateBoardModal({ open, onClose }: { open: boolean; onClose: () => voi
       window.location.href = `/boards/${data.board.id}`;
     } else {
       const d = await res.json().catch(() => ({}));
-      setError(d.error || "Erreur");
+      setError(d.error || t("misc.error"));
     }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Nouveau tableau">
+    <Modal open={open} onClose={onClose} title={t("boards.newModal.title")}>
       <div className="space-y-4">
         <label className="block">
-          <span className="text-sm font-medium text-on-surface">Nom du tableau</span>
+          <span className="text-sm font-medium text-on-surface">{t("boards.newModal.name")}</span>
           <input
             autoFocus
             className="input mt-1"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Ex. Projet site web"
+            placeholder={t("boards.newModal.namePlaceholder")}
           />
         </label>
 
         <div>
-          <span className="text-sm font-medium text-on-surface">Type</span>
+          <span className="text-sm font-medium text-on-surface">{t("boards.newModal.type")}</span>
           <div className="mt-2 grid grid-cols-2 gap-2">
-            {(["PERSONAL", "TEAM"] as const).map((t) => (
+            {(["PERSONAL", "TEAM"] as const).map((tp) => (
               <button
-                key={t}
+                key={tp}
                 type="button"
-                onClick={() => setType(t)}
+                onClick={() => setType(tp)}
                 className={cn(
                   "rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
-                  type === t
+                  type === tp
                     ? "border-primary/50 bg-primary/10 text-primary"
                     : "border-primary/10 text-on-surface-variant hover:bg-primary/5",
                 )}
               >
-                <span className="block font-medium text-on-surface">{t === "PERSONAL" ? "Personnel" : "Équipe"}</span>
+                <span className="block font-medium text-on-surface">{tp === "PERSONAL" ? t("boards.personalFull") : t("boards.team")}</span>
                 <span className="text-xs text-on-surface-variant">
-                  {t === "PERSONAL" ? "Privé, visible par vous seul" : "Partage avec d’autres membres"}
+                  {tp === "PERSONAL" ? t("boards.newModal.personalHint") : t("boards.newModal.teamHint")}
                 </span>
               </button>
             ))}
@@ -175,9 +179,9 @@ function CreateBoardModal({ open, onClose }: { open: boolean; onClose: () => voi
         {error && <p className="text-sm text-error">{error}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
-          <button onClick={onClose} className="btn-ghost">Annuler</button>
+          <button onClick={onClose} className="btn-ghost">{t("boards.newModal.cancel")}</button>
           <button onClick={create} disabled={saving || !name.trim()} className="btn-primary">
-            {saving ? "Création…" : "Créer"}
+            {saving ? t("boards.newModal.submitting") : t("boards.newModal.submit")}
           </button>
         </div>
       </div>

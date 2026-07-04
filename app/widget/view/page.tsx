@@ -3,48 +3,51 @@ import { resolveApiTokenUser } from "@/lib/auth/token";
 import { buildWidgetSummary } from "@/lib/widget-summary";
 import { Icon } from "@/components/Icon";
 import { WidgetViewClient } from "./WidgetViewClient";
+import { getServerLocale } from "@/lib/i18n/server";
+import { getServerTranslator } from "@/lib/i18n/server";
+import { I18nProvider } from "@/lib/i18n/client";
 
 export const runtime = "nodejs";
 
-export const metadata: Metadata = {
-  title: "Kanby — Widget",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = getServerTranslator();
+  return {
+    title: t("widget.title"),
+    robots: { index: false, follow: false },
+  };
+}
 
-/**
- * Standalone lightweight page designed to be embedded in a small iframe
- * (e.g. a Dashy widget, ~300-400px wide). No app shell, no navigation.
- * Auth is via a personal API token passed as `?token=kbt_...`.
- *
- * This page is rendered inside the root layout (so it inherits <html>/<body>),
- * but its content is intentionally minimal and uses its own compact styling
- * scoped to a single wrapper so it looks right in a small iframe.
- */
 export default async function WidgetViewPage({
   searchParams,
 }: {
   searchParams: { token?: string };
 }) {
   const user = await resolveApiTokenUser(searchParams.token ?? null);
+  const locale = getServerLocale();
+  const t = getServerTranslator();
 
   if (!user) {
     return (
-      <WidgetShell>
-        <div className="flex flex-col items-center gap-3 py-10 text-center">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/30 bg-primary/20 text-primary">
-            <Icon name="ac_unit" size={18} />
+      <I18nProvider locale={locale}>
+        <WidgetShell>
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/30 bg-primary/20 text-primary">
+              <Icon name="ac_unit" size={18} />
+            </div>
+            <p className="text-sm text-on-surface-variant">{t("api.tokenInvalid")}</p>
           </div>
-          <p className="text-sm text-on-surface-variant">Token invalide ou manquant.</p>
-        </div>
-      </WidgetShell>
+        </WidgetShell>
+      </I18nProvider>
     );
   }
 
   const summary = await buildWidgetSummary(user);
   return (
-    <WidgetShell>
-      <WidgetViewClient summary={summary} displayName={user.displayName} />
-    </WidgetShell>
+    <I18nProvider locale={locale}>
+      <WidgetShell>
+        <WidgetViewClient summary={summary} displayName={user.displayName} />
+      </WidgetShell>
+    </I18nProvider>
   );
 }
 

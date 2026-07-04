@@ -19,6 +19,8 @@ import {
 } from "@dnd-kit/sortable";
 import { BoardColumn } from "@/components/BoardColumn";
 import { celebrateDoneDrop } from "@/components/ConfettiOnDoneDrop";
+import { Icon } from "@/components/Icon";
+import { useI18n } from "@/lib/i18n/client";
 import type { ColumnRow, CardRow } from "@/types/api";
 import { prismaPatch } from "@/lib/client-api";
 
@@ -27,17 +29,20 @@ export function DndBoard({
   setColumns,
   canEdit,
   onCardClick,
+  onAddColumn,
 }: {
   columns: ColumnRow[];
   setColumns: React.Dispatch<React.SetStateAction<ColumnRow[]>>;
   canEdit: boolean;
   onCardClick: (card: CardRow, column: ColumnRow) => void;
+  onAddColumn?: () => void;
 }) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const { t } = useI18n();
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -60,7 +65,6 @@ export function DndBoard({
       if (oldIndex === -1 || newIndex === -1) return;
 
       const prev = columns;
-      // Optimistic reorder.
       setColumns((cols) => {
         const next = [...cols];
         const [moved] = next.splice(oldIndex, 1);
@@ -68,7 +72,6 @@ export function DndBoard({
         return next.map((c, i) => ({ ...c, order: i }));
       });
 
-      // Persist new orders for all affected columns.
       try {
         const reordered = [...columns];
         const [moved] = reordered.splice(oldIndex, 1);
@@ -93,7 +96,8 @@ export function DndBoard({
     }
     if (!sourceColumn || !activeCard) return;
 
-    // `over` may be a column id or a card id. Resolve target column + index.
+    // `over` may be a card id or a column id (when dropping on empty space
+    // or directly on the column droppable). Resolve target column + index.
     let targetColumn: ColumnRow | undefined;
     let targetIndex = 0;
     for (const c of columns) {
@@ -101,7 +105,7 @@ export function DndBoard({
       if (idx !== -1) { targetColumn = c; targetIndex = idx; break; }
     }
     if (!targetColumn) {
-      // over is a column droppable id (e.g. dropped on empty space).
+      // `over` is a column id (e.g. dropped on the column background).
       targetColumn = columns.find((c) => c.id === overId);
       if (!targetColumn) return;
       targetIndex = targetColumn.cards.length;
@@ -119,7 +123,11 @@ export function DndBoard({
       src.cards = src.cards.filter((card) => card.id !== activeId);
       // Adjust target index if moving within the same column after removal.
       let idx = targetIndex;
-      if (sameColumn && idx > src.cards.length) idx = src.cards.length;
+      if (sameColumn) {
+        // Recompute index in the filtered source list.
+        const filteredIdx = dst.cards.findIndex((card) => card.id === activeId);
+        if (filteredIdx === -1 || idx > dst.cards.length) idx = dst.cards.length;
+      }
       const moved: CardRow = { ...activeCard!, columnId: dst.id };
       dst.cards.splice(idx, 0, moved);
       // Re-index orders.
@@ -167,6 +175,15 @@ export function DndBoard({
               onColorColumn={colorColumn}
             />
           ))}
+          {onAddColumn && (
+            <button
+              onClick={onAddColumn}
+              className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-dashed border-primary/20 px-4 text-sm text-on-surface-variant transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+            >
+              <Icon name="add" size={16} />
+              {t("board.addColumn")}
+            </button>
+          )}
         </div>
       </SortableContext>
     </DndContext>
@@ -206,7 +223,7 @@ export function DndBoard({
   }
 
   async function deleteColumn(columnId: string) {
-    if (!confirm("Supprimer cette colonne et toutes ses tâches ?")) return;
+    if (!confirm(t("board.deleteColumnConfirm"))) return;
     setColumns((cols) => cols.filter((c) => c.id !== columnId));
     await fetch(`/api/columns/${columnId}`, { method: "DELETE" });
   }

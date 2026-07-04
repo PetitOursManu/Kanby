@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/auth/passwords";
 import { issueSession } from "@/lib/auth/session";
+import { rateLimitOr429 } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+  const limited = rateLimitOr429(req, "login", 10, 60);
+  if (limited) return limited;
+
   let body: { email?: string; password?: string };
   try {
     body = await req.json();

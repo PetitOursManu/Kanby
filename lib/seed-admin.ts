@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 
 /**
  * Idempotently create the default admin account from environment variables.
- * Called by `prisma/seed.ts` and by the Docker entrypoint on first boot.
+ * Called by `prisma/seed.js` and by the Docker entrypoint on first boot.
  * Safe to run multiple times: only creates the admin if no user with that
  * email exists yet.
  */

@@ -10,12 +10,14 @@ export function Modal({
   title,
   children,
   size = "md",
+  frosted = false,
 }: {
   open: boolean;
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
   size?: "sm" | "md" | "lg";
+  frosted?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -44,7 +46,7 @@ export function Modal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm md:items-center md:p-4"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-background/80 backdrop-blur-md md:items-center md:p-4"
         >
           <motion.div
             initial={{ y: 40, opacity: 0, scale: 0.98 }}
@@ -57,7 +59,8 @@ export function Modal({
             onDragEnd={(_, info) => info.offset.y > 120 && onClose()}
             onClick={(e) => e.stopPropagation()}
             className={cn(
-              "glass-elevated max-h-[88vh] w-full overflow-y-auto rounded-t-2xl md:rounded-2xl",
+              "max-h-[88vh] w-full overflow-y-auto rounded-t-2xl md:rounded-2xl",
+              frosted ? "glass-modal" : "glass-elevated",
               maxW,
             )}
           >

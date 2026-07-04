@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { getServerLocale } from "@/lib/i18n/server";
+import { getServerTranslator } from "@/lib/i18n/server";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -9,24 +11,27 @@ const inter = Inter({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "Kanby — Gestionnaire de tâches Kanban",
-  description: "Un Kanban simple, vivant et auto-hébergé.",
-  manifest: "/site.webmanifest",
-  icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
-    ],
-    apple: "/apple-touch-icon.png",
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Kanby",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = getServerTranslator();
+  return {
+    title: t("app.title"),
+    description: t("app.description"),
+    manifest: "/site.webmanifest",
+    icons: {
+      icon: [
+        { url: "/favicon.ico", sizes: "any" },
+        { url: "/favicon.svg", type: "image/svg+xml" },
+        { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+      ],
+      apple: "/apple-touch-icon.png",
+    },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: "Kanby",
+    },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -35,13 +40,14 @@ export const viewport: Viewport = {
   themeColor: "#0a0e1a",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = getServerLocale();
   return (
-    <html lang="fr" suppressHydrationWarning className={inter.variable}>
+    <html lang={locale} suppressHydrationWarning className={inter.variable}>
       <body className="font-sans">
         <ThemeProvider
           attribute="class"

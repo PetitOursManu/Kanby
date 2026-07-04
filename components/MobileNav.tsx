@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/client";
 
 type LinkItem = { href: string; label: string; key: string; icon: string };
 
@@ -22,6 +23,7 @@ export function MobileNav({
   links: LinkItem[];
   active?: string;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
 
   async function logout() {
@@ -54,7 +56,7 @@ export function MobileNav({
               <Avatar name={user.displayName} url={user.avatarUrl} size={40} />
               <div>
                 <p className="text-sm font-semibold text-on-surface">{user.displayName}</p>
-                <p className="text-xs text-on-surface-variant">Mon compte</p>
+                <p className="text-xs text-on-surface-variant">{t("nav.myAccount")}</p>
               </div>
             </div>
 
@@ -82,7 +84,7 @@ export function MobileNav({
                   className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-base font-medium text-on-surface-variant transition-colors hover:bg-error/10 hover:text-error"
                 >
                   <Icon name="logout" size={20} />
-                  Déconnexion
+                  {t("nav.logout")}
                 </button>
               </li>
             </ul>

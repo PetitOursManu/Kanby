@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { resolveUserFromRequest } from "@/lib/auth/unified";
+import { rateLimitOr429 } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,9 @@ export const runtime = "nodejs";
  * Response 401:  { error: "Non authentifié" }
  */
 export async function POST(req: NextRequest) {
+  const limited = rateLimitOr429(req, "revoke", 20, 60);
+  if (limited) return limited;
+
   const user = await resolveUserFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });

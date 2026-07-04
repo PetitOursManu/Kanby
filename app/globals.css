@@ -11,11 +11,11 @@
     --surface-dim: 238 244 252; /* #eef4fc */
     --surface-bright: 230 241 252; /* #e6f1fc */
     --surface-variant: 226 238 250; /* #e2eefa */
-    --surface-container-lowest: 246 250 255;
-    --surface-container-low: 242 248 255;
-    --surface-container: 236 244 252;
-    --surface-container-high: 230 241 252;
-    --surface-container-highest: 222 235 248;
+    --surface-container-lowest: 250 252 255;
+    --surface-container-low: 240 246 254; /* #f0f6fe — colonnes */
+    --surface-container: 232 240 250; /* #e8f0fa — header colonne */
+    --surface-container-high: 224 234 247; /* #e0eaf7 */
+    --surface-container-highest: 214 227 244; /* #d6e3f4 — cartes & modales */
     --on-surface: 12 20 32;
     --on-surface-variant: 78 98 122; /* #4e627a */
     --inverse-surface: 12 20 32;
@@ -62,11 +62,11 @@
     --surface-dim: 15 19 31; /* #0f131f */
     --surface-bright: 26 36 56; /* #1a2438 */
     --surface-variant: 26 36 56; /* #1a2438 */
-    --surface-container-lowest: 10 14 26;
-    --surface-container-low: 17 24 40;
-    --surface-container: 20 28 46;
-    --surface-container-high: 26 36 56;
-    --surface-container-highest: 32 44 66;
+    --surface-container-lowest: 8 12 22; /* #080c16 */
+    --surface-container-low: 18 25 40; /* #121928 — colonnes */
+    --surface-container: 24 33 50; /* #182132 — header colonne */
+    --surface-container-high: 30 41 60; /* #1e293c */
+    --surface-container-highest: 38 51 72; /* #263348 — cartes & modales */
     --on-surface: 224 232 240;
     --on-surface-variant: 160 180 196; /* #a0b4c4 */
     --inverse-surface: 224 232 240;
@@ -154,18 +154,79 @@
   }
 
   .glass-panel {
-    background: rgba(var(--surface), 0.7);
+    background: rgb(var(--surface-container-low));
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(var(--surface-tint), 0.12);
+    border: 1px solid rgba(var(--surface-tint), 0.18);
   }
 
   .glass-elevated {
-    background: rgba(var(--surface), 0.85);
+    background: rgb(var(--surface-container-highest));
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(var(--surface-tint), 0.18);
-    box-shadow: 0 0 30px rgba(var(--surface-tint), 0.06);
+    border: 1px solid rgba(var(--surface-tint), 0.35);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Frosted-glass effect for kanban cards — clearly distinct from columns.
+     Strong blur + high opacity + subtle grain → "verre givré" look that
+     works in both light and dark themes. */
+  .glass-card {
+    position: relative;
+    background: rgba(var(--surface-container-highest), 0.92);
+    backdrop-filter: blur(28px) saturate(1.15);
+    -webkit-backdrop-filter: blur(28px) saturate(1.15);
+    border: 1px solid rgba(var(--surface-tint), 0.3);
+    box-shadow:
+      0 2px 10px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+    isolation: isolate;
+  }
+  /* Frosted grain overlay — subtle noise via repeating radial gradients to
+     mimic the crystalline texture of etched/frosted glass. */
+  .glass-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0.4;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.05) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.04) 0%, transparent 35%),
+      radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
+    mix-blend-mode: overlay;
+  }
+
+  /* Frosted-glass modal — same texture as glass-card but larger blur and
+     higher opacity for readability of long content (card detail). */
+  .glass-modal {
+    position: relative;
+    background: rgba(var(--surface-container-highest), 0.95);
+    backdrop-filter: blur(32px) saturate(1.2);
+    -webkit-backdrop-filter: blur(32px) saturate(1.2);
+    border: 1px solid rgba(var(--surface-tint), 0.3);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+    isolation: isolate;
+  }
+  .glass-modal::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0.4;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.05) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.04) 0%, transparent 35%),
+      radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
+    mix-blend-mode: overlay;
   }
 
   .btn {
@@ -220,8 +281,8 @@
 
   .input {
     @apply w-full rounded-lg border px-3 py-2 text-sm outline-none transition-all;
-    background: rgba(var(--surface-bright), 0.5);
-    border-color: rgba(var(--primary), 0.12);
+    background: rgb(var(--surface-container-high));
+    border-color: rgba(var(--primary), 0.15);
     color: rgb(var(--on-surface));
   }
   .input::placeholder {

@@ -3,6 +3,7 @@ import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { LogoutButton } from "@/components/LogoutButton";
 import { cn } from "@/lib/utils";
+import { getServerTranslator } from "@/lib/i18n/server";
 
 type LinkItem = { href: string; label: string; key: string; icon: string };
 
@@ -15,6 +16,7 @@ export function Sidebar({
   links: LinkItem[];
   active?: string;
 }) {
+  const t = getServerTranslator();
   return (
     <aside className="fixed left-0 top-0 z-30 hidden h-screen w-64 flex-col border-r border-primary/10 bg-surface/60 backdrop-blur-xl shadow-[0_0_30px_rgba(125,211,252,0.05)] md:flex">
       {/* Brand */}
@@ -38,7 +40,7 @@ export function Sidebar({
           className="flex w-full items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/15 px-4 py-2.5 text-sm font-medium text-primary transition-all hover:bg-primary/25 hover:shadow-glow-sm"
         >
           <Icon name="add" size={16} />
-          Nouveau tableau
+          {t("nav.newBoard")}
         </Link>
       </div>
 
@@ -74,7 +76,7 @@ export function Sidebar({
           <Avatar name={user.displayName} url={user.avatarUrl} size={32} />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-on-surface">{user.displayName}</p>
-            <p className="truncate text-xs text-on-surface-variant">Mon compte</p>
+            <p className="truncate text-xs text-on-surface-variant">{t("nav.myAccount")}</p>
           </div>
         </div>
         <div className="space-y-1">
@@ -83,7 +85,7 @@ export function Sidebar({
             className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium text-on-surface-variant transition-colors hover:bg-primary/5 hover:text-on-surface"
           >
             <Icon name="help" size={18} />
-            Aide
+            {t("nav.help")}
           </Link>
           <LogoutButton
             showLabel

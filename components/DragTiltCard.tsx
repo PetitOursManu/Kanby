@@ -3,7 +3,7 @@
 import { useMotionValue, useSpring, motion } from "framer-motion";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -25,14 +25,15 @@ export function DragTiltCard({
   const rx = useSpring(useMotionValue(0), { stiffness: 300, damping: 25 });
   const ry = useSpring(useMotionValue(0), { stiffness: 300, damping: 25 });
 
-  // Drive tilt from the live transform while dragging.
+  const movedRef = useRef(false);
+
   useEffect(() => {
     if (!dndDragging) {
       rx.set(0);
       ry.set(0);
       return;
     }
-    // transform.x / transform.y are the drag delta in px; map to ±12deg.
+    movedRef.current = true;
     const dx = transform?.x ?? 0;
     const dy = transform?.y ?? 0;
     const tiltY = Math.max(-12, Math.min(12, dx / 12));
@@ -55,6 +56,13 @@ export function DragTiltCard({
       style={style}
       {...attributes}
       {...listeners}
+      onClick={(e) => {
+        if (movedRef.current) {
+          e.stopPropagation();
+          e.preventDefault();
+        }
+        movedRef.current = false;
+      }}
       className={cn(
         "touch-none",
         isDragging ? "cursor-grabbing" : "cursor-grab",

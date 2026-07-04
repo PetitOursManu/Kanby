@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBoardMember, requireBoardOwner } from "@/lib/auth-guard";
+import { notifyBoardMembers } from "@/lib/notify";
 
 export const runtime = "nodejs";
 
@@ -45,6 +46,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     create: { boardId: params.id, userId, role: "MEMBER" },
     include: { user: { select: { id: true, displayName: true, email: true, avatarUrl: true } } },
   });
+
+  await notifyBoardMembers({
+    req,
+    boardId: params.id,
+    actorId: auth.user.id,
+    kind: "member_added",
+    messageKey: "notif.member_added",
+  });
+
   return NextResponse.json({ member }, { status: 201 });
 }
 
@@ -59,5 +69,14 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   }
 
   await prisma.boardMember.deleteMany({ where: { boardId: params.id, userId } });
+
+  await notifyBoardMembers({
+    req,
+    boardId: params.id,
+    actorId: auth.user.id,
+    kind: "member_removed",
+    messageKey: "notif.member_removed",
+  });
+
   return NextResponse.json({ ok: true });
 }

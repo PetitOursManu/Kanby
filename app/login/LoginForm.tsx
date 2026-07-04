@@ -5,8 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Icon } from "@/components/Icon";
+import { useI18n } from "@/lib/i18n/client";
 
 export function LoginForm() {
+  const { t } = useI18n();
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/boards";
@@ -28,7 +30,7 @@ export function LoginForm() {
     setLoading(false);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error || "Échec de la connexion");
+      setError(data.error || t("auth.login.failed"));
       return;
     }
     const data = await res.json();
@@ -41,9 +43,9 @@ export function LoginForm() {
   }
 
   return (
-    <AuthShell title="Connexion" subtitle="Heureux de vous revoir sur Kanby.">
+    <AuthShell title={t("auth.login.title")} subtitle={t("auth.login.subtitle")}>
       <form onSubmit={onSubmit} className="space-y-4">
-        <Field label="Email">
+        <Field label={t("auth.login.email")}>
           <input
             type="email"
             autoComplete="email"
@@ -51,10 +53,10 @@ export function LoginForm() {
             className="input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="vous@exemple.com"
+            placeholder={t("auth.login.emailPlaceholder")}
           />
         </Field>
-        <Field label="Mot de passe">
+        <Field label={t("auth.login.password")}>
           <input
             type="password"
             autoComplete="current-password"
@@ -68,14 +70,14 @@ export function LoginForm() {
         {error && <ErrorShake message={error} />}
 
         <button type="submit" disabled={loading} className="btn-primary w-full">
-          {loading ? "Connexion…" : "Se connecter"}
+          {loading ? t("auth.login.submitting") : t("auth.login.submit")}
         </button>
       </form>
 
       <p className="mt-6 text-center text-sm text-on-surface-variant">
-        Pas encore de compte ?{" "}
+        {t("auth.login.noAccount")}{" "}
         <Link href="/register" className="font-medium text-primary hover:underline">
-          Créer un compte
+          {t("auth.login.createLink")}
         </Link>
       </p>
     </AuthShell>

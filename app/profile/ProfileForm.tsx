@@ -4,6 +4,9 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
+import { useI18n, useChangeLocale } from "@/lib/i18n/client";
+import { LOCALES, type Locale } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 type Props = {
   user: {
@@ -18,11 +21,12 @@ type Props = {
 };
 
 export function ProfileForm({ user, mustChangeBanner }: Props) {
+  const { t } = useI18n();
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-on-surface">Profil</h1>
-        <p className="text-sm text-on-surface-variant">Gérez votre identité, votre mot de passe et vos tokens d’API.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-on-surface">{t("profile.title")}</h1>
+        <p className="text-sm text-on-surface-variant">{t("profile.subtitle")}</p>
       </div>
 
       <AnimatePresence>
@@ -33,13 +37,14 @@ export function ProfileForm({ user, mustChangeBanner }: Props) {
             exit={{ opacity: 0, height: 0 }}
             className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300"
           >
-            Pour des raisons de sécurité, veuillez changer votre mot de passe.
+            {t("profile.mustChangePassword")}
           </motion.div>
         )}
       </AnimatePresence>
 
       <IdentityCard user={user} />
       <PasswordCard mustChange={user.mustChangePwd} />
+      <LanguageCard />
       <TokensCard />
     </div>
   );
@@ -66,6 +71,7 @@ function Card({
 }
 
 function IdentityCard({ user }: { user: Props["user"] }) {
+  const { t } = useI18n();
   const [displayName, setDisplayName] = useState(user.displayName);
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl || "");
   const [saving, setSaving] = useState(false);
@@ -83,11 +89,11 @@ function IdentityCard({ user }: { user: Props["user"] }) {
       }),
     });
     setSaving(false);
-    setMsg(res.ok ? "Enregistré" : "Erreur lors de l’enregistrement");
+    setMsg(res.ok ? t("profile.saved") : t("profile.saveError"));
   }
 
   return (
-    <Card title="Identité" description="Nom affiché et avatar.">
+    <Card title={t("profile.identity")} description={t("profile.identityDesc")}>
       <div className="flex flex-col items-start gap-6 md:flex-row">
         <div className="flex flex-col items-center gap-4">
           <div className="group relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-primary/30 bg-primary/20 text-3xl font-bold tracking-wider text-primary shadow-glow-sm">
@@ -104,7 +110,7 @@ function IdentityCard({ user }: { user: Props["user"] }) {
 
         <div className="flex flex-1 flex-col gap-4">
           <label className="block">
-            <span className="text-sm font-medium text-on-surface-variant">Nom affiché</span>
+            <span className="text-sm font-medium text-on-surface-variant">{t("profile.displayName")}</span>
             <input
               className="input mt-1"
               value={displayName}
@@ -112,7 +118,7 @@ function IdentityCard({ user }: { user: Props["user"] }) {
             />
           </label>
           <label className="block">
-            <span className="text-sm font-medium text-on-surface-variant">URL d’avatar (optionnel)</span>
+            <span className="text-sm font-medium text-on-surface-variant">{t("profile.avatarUrl")}</span>
             <input
               className="input mt-1"
               value={avatarUrl}
@@ -122,10 +128,10 @@ function IdentityCard({ user }: { user: Props["user"] }) {
           </label>
           <div className="flex items-center gap-4">
             <button onClick={save} disabled={saving} className="btn-primary">
-              {saving ? "Enregistrement…" : "Enregistrer"}
+              {saving ? t("profile.saving") : t("profile.save")}
             </button>
             <span className="text-sm text-on-surface-variant">
-              {user.email} · {user.globalRole === "ADMIN" ? "Administrateur" : "Utilisateur"}
+              {user.email} · {user.globalRole === "ADMIN" ? t("profile.admin") : t("profile.user")}
             </span>
             {msg && <span className="text-sm text-primary">{msg}</span>}
           </div>
@@ -136,6 +142,7 @@ function IdentityCard({ user }: { user: Props["user"] }) {
 }
 
 function PasswordCard({ mustChange }: { mustChange: boolean }) {
+  const { t } = useI18n();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [saving, setSaving] = useState(false);
@@ -152,22 +159,22 @@ function PasswordCard({ mustChange }: { mustChange: boolean }) {
     });
     setSaving(false);
     if (res.ok) {
-      setMsg("Mot de passe mis à jour");
+      setMsg(t("profile.passwordUpdated"));
       setCurrent("");
       setNext("");
     } else {
       const data = await res.json().catch(() => ({}));
-      setMsg(data.error || "Erreur");
+      setMsg(data.error || t("misc.error"));
     }
   }
 
   return (
-    <Card title="Mot de passe" description="Choisissez un mot de passe d’au moins 8 caractères.">
+    <Card title={t("profile.password")} description={t("profile.passwordDesc")}>
       <form onSubmit={save} className="grid gap-4 md:grid-cols-2">
         <input
           type="password"
           autoComplete="current-password"
-          placeholder="Mot de passe actuel"
+          placeholder={t("profile.currentPasswordPlaceholder")}
           className="input"
           value={current}
           onChange={(e) => setCurrent(e.target.value)}
@@ -176,7 +183,7 @@ function PasswordCard({ mustChange }: { mustChange: boolean }) {
         <input
           type="password"
           autoComplete="new-password"
-          placeholder="Nouveau mot de passe"
+          placeholder={t("profile.newPasswordPlaceholder")}
           className="input"
           value={next}
           onChange={(e) => setNext(e.target.value)}
@@ -184,9 +191,9 @@ function PasswordCard({ mustChange }: { mustChange: boolean }) {
         />
         <div className="flex items-center gap-4 md:col-span-2">
           <button type="submit" disabled={saving} className="btn-primary">
-            {saving ? "…" : "Changer le mot de passe"}
+            {saving ? "…" : t("profile.changePassword")}
           </button>
-          {mustChange && <span className="text-sm text-amber-300">Changement obligatoire</span>}
+          {mustChange && <span className="text-sm text-amber-300">{t("profile.forcedChange")}</span>}
           {msg && <span className="text-sm text-primary">{msg}</span>}
         </div>
       </form>
@@ -194,9 +201,43 @@ function PasswordCard({ mustChange }: { mustChange: boolean }) {
   );
 }
 
+function LanguageCard() {
+  const { t, locale } = useI18n();
+  const { change, changing } = useChangeLocale();
+
+  const labels: Record<Locale, string> = {
+    fr: "Français",
+    en: "English",
+  };
+
+  return (
+    <Card title={t("profile.language")} description={t("profile.languageDesc")}>
+      <div className="flex flex-wrap gap-3">
+        {LOCALES.map((l) => (
+          <button
+            key={l}
+            onClick={() => change(l)}
+            disabled={changing || l === locale}
+            className={cn(
+              "rounded-xl border px-5 py-3 text-sm font-medium transition-all",
+              l === locale
+                ? "border-primary/40 bg-primary/10 text-primary shadow-glow-sm"
+                : "border-primary/15 bg-surface-container/50 text-on-surface-variant hover:border-primary/30 hover:bg-primary/5",
+            )}
+          >
+            {labels[l]}
+            {l === locale && <span className="ml-2 text-xs">✓</span>}
+          </button>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 type Token = { id: string; label: string; prefix: string; lastUsedAt: string | null; createdAt: string };
 
 function TokensCard() {
+  const { t } = useI18n();
   const [tokens, setTokens] = useState<Token[]>([]);
   const [label, setLabel] = useState("");
   const [created, setCreated] = useState<string | null>(null);
@@ -215,7 +256,7 @@ function TokensCard() {
     const res = await fetch("/api/me/tokens", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ label: label || "Dashy" }),
+      body: JSON.stringify({ label: label || t("misc.dashy") }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -223,7 +264,7 @@ function TokensCard() {
       setLabel("");
       await load();
     } else {
-      setMsg("Erreur lors de la création");
+      setMsg(t("profile.tokenCreatedError"));
     }
   }
 
@@ -232,27 +273,26 @@ function TokensCard() {
     await load();
   }
 
-  // Load on mount
   if (loading && tokens.length === 0) {
     load();
   }
 
   return (
     <Card
-      title="Tokens d’API"
-      description="Pour connecter un dashboard externe (ex. Dashy) au résumé de vos tâches. Le token brut n’est affiché qu’une seule fois."
+      title={t("profile.tokens")}
+      description={t("profile.tokensDesc")}
     >
       <div className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row">
           <input
             className="input"
-            placeholder="Nom du token (ex. Dashy)"
+            placeholder={t("profile.tokenLabelPlaceholder")}
             value={label}
             onChange={(e) => setLabel(e.target.value)}
           />
           <button onClick={create} className="btn-primary shrink-0">
             <Icon name="add" size={16} />
-            Générer un token
+            {t("profile.generateToken")}
           </button>
         </div>
 
@@ -262,16 +302,16 @@ function TokensCard() {
             animate={{ opacity: 1, y: 0 }}
             className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3"
           >
-            <p className="text-sm font-medium text-emerald-300">Copiez ce token maintenant, il ne sera plus affiché :</p>
+            <p className="text-sm font-medium text-emerald-300">{t("profile.copyTokenNow")}</p>
             <code className="mt-1 block break-all rounded bg-background/60 px-2 py-1 text-sm text-on-surface">{created}</code>
             <div className="mt-2 flex gap-2">
               <button
                 className="btn-ghost text-xs"
                 onClick={() => navigator.clipboard?.writeText(created)}
               >
-                Copier
+                {t("profile.copy")}
               </button>
-              <button className="btn-ghost text-xs" onClick={() => setCreated(null)}>Fermer</button>
+              <button className="btn-ghost text-xs" onClick={() => setCreated(null)}>{t("profile.close")}</button>
             </div>
           </motion.div>
         )}
@@ -280,12 +320,12 @@ function TokensCard() {
 
         <ul className="divide-y divide-primary/5 rounded-xl border border-primary/10">
           {tokens.length === 0 && !loading && (
-            <li className="px-3 py-4 text-sm text-on-surface-variant">Aucun token actif.</li>
+            <li className="px-3 py-4 text-sm text-on-surface-variant">{t("profile.noTokens")}</li>
           )}
           <AnimatePresence>
-            {tokens.map((t) => (
+            {tokens.map((tk) => (
               <motion.li
-                key={t.id}
+                key={tk.id}
                 layout
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -293,12 +333,12 @@ function TokensCard() {
                 className="flex items-center justify-between gap-3 px-3 py-3"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-on-surface">{t.label}</p>
+                  <p className="truncate text-sm font-medium text-on-surface">{tk.label}</p>
                   <p className="text-xs text-on-surface-variant">
-                    <code>kbt_{t.prefix}…</code> · utilisé {t.lastUsedAt ? new Date(t.lastUsedAt).toLocaleDateString() : "jamais"}
+                    <code>kbt_{tk.prefix}…</code> · {t("profile.used")} {tk.lastUsedAt ? new Date(tk.lastUsedAt).toLocaleDateString() : t("profile.never")}
                   </p>
                 </div>
-                <button onClick={() => revoke(t.id)} className="btn-danger text-xs">Révoquer</button>
+                <button onClick={() => revoke(tk.id)} className="btn-danger text-xs">{t("profile.revoke")}</button>
               </motion.li>
             ))}
           </AnimatePresence>

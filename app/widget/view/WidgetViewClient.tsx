@@ -2,6 +2,7 @@
 
 import { Icon } from "@/components/Icon";
 import { formatDueDate, isOverdue } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/client";
 import type { WidgetSummary, WidgetItem } from "@/lib/widget-summary";
 
 export function WidgetViewClient({
@@ -11,6 +12,7 @@ export function WidgetViewClient({
   summary: WidgetSummary;
   displayName: string;
 }) {
+  const { t } = useI18n();
   const { dueToday, overdue, upcoming, counts } = summary;
 
   return (
@@ -28,25 +30,25 @@ export function WidgetViewClient({
 
       {/* Counters */}
       <div className="grid grid-cols-3 gap-2">
-        <Counter value={counts.dueToday} label="Aujourd’hui" tone="amber" />
-        <Counter value={counts.overdue} label="En retard" tone="rose" />
-        <Counter value={counts.totalOpen} label="En cours" tone="primary" />
+        <Counter value={counts.dueToday} label={t("widget.today")} tone="amber" />
+        <Counter value={counts.overdue} label={t("widget.overdue")} tone="rose" />
+        <Counter value={counts.totalOpen} label={t("widget.inProgress")} tone="primary" />
       </div>
 
       {/* Lists */}
       <div className="space-y-3">
         {dueToday.length > 0 && (
-          <Section title="Aujourd’hui" items={dueToday} accent="#f59e0b" />
+          <Section title={t("widget.today")} items={dueToday} accent="#f59e0b" />
         )}
         {overdue.length > 0 && (
-          <Section title="En retard" items={overdue} accent="#f43f5e" />
+          <Section title={t("widget.overdue")} items={overdue} accent="#f43f5e" />
         )}
         {upcoming.length > 0 && (
-          <Section title="À venir" items={upcoming} accent="#7dd3fc" />
+          <Section title={t("widget.upcoming")} items={upcoming} accent="#7dd3fc" />
         )}
         {dueToday.length === 0 && overdue.length === 0 && upcoming.length === 0 && (
           <p className="glass-panel rounded-xl p-4 text-center text-sm text-on-surface-variant">
-            Aucune tâche planifiée.
+            {t("widget.noTasks")}
           </p>
         )}
       </div>

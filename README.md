@@ -19,6 +19,8 @@ futur client mobile.
 - **Glisser-déposer** : à la souris et au toucher (appui long de 200 ms sur
   mobile), avec effet d'inclinaison 3D pendant le déplacement
 - **Mobile** : swipe horizontal entre les colonnes, menus en bottom-sheet
+- **i18n** : interface disponible en Français et Anglais, sélecteur dans le profil
+- **Notifications** : cloche dans la TopBar avec compteur de notifications non lues
 - **Admin** : panneau d'administration (utilisateurs, tableaux, statistiques)
 - **API** : tous les endpoints accessibles par token `kbt_` pour un client
   mobile ou un script externe — voir [`API.md`](./API.md)
@@ -37,7 +39,11 @@ futur client mobile.
 
 ### Étapes
 
-1. **Récupérez les fichiers** de Kanby sur votre serveur.
+1. **Récupérez les fichiers** de Kanby sur votre serveur :
+   ```bash
+   git clone https://github.com/PetitOursManu/Kanby.git
+   cd Kanby
+   ```
 
 2. **Copiez le fichier d'exemple** de configuration :
    ```bash
@@ -66,6 +72,11 @@ futur client mobile.
    `.env`. L'application vous demandera de **changer ce mot de passe** dès la
    première connexion.
 
+### Ports Docker
+
+- **Port par défaut** : `3000` (configurable via `APP_PORT` dans `.env`)
+- **Port de test** : `3002` (via `docker-compose-test.yml` pour tester sans affecter la production)
+
 ---
 
 ## Mise à jour
@@ -77,6 +88,23 @@ docker compose up -d
 ```
 
 Les migrations de base de données s'appliquent automatiquement au démarrage.
+
+## Tests
+
+Kanby inclut une suite de tests unitaires et d'intégration avec **Vitest** :
+
+```bash
+# Lancer tous les tests
+npm run test
+
+# Lancer les tests avec couverture
+npm run test:coverage
+```
+
+Les tests couvrent :
+- La validation des mots de passe
+- Le rate limiting des endpoints API
+- Les fonctions utilitaires
 
 ---
 
@@ -163,6 +191,8 @@ Le compte admin a accès à un panneau **Admin** :
 - Authentification **JWT** (cookie httpOnly) + **tokens d'API** (`kbt_`) pour
   le widget Dashy et l'API mobile
 - Déploiement **Docker** (image unique + Postgres)
+- **i18n** : internationalisation FR/EN avec sélecteur de langue
+- **Vitest** : tests unitaires et d'intégration
 
 ---
 

@@ -28,6 +28,7 @@
     "canvas-confetti": "^1.9.3",
     "clsx": "^2.1.1",
     "framer-motion": "^11.3.0",
+    "jose": "^5.10.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.396.0",
     "next": "14.2.35",

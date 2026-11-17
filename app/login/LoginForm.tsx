@@ -6,12 +6,14 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Icon } from "@/components/Icon";
 import { useI18n } from "@/lib/i18n/client";
+import { KosmyBoardButton, kosmyErrorMessage } from "@/components/KosmyBoard";
 
-export function LoginForm() {
+export function LoginForm({ kosmyEnabled = false }: { kosmyEnabled?: boolean }) {
   const { t } = useI18n();
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/boards";
+  const kosmyError = params.get("kosmy_error");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,6 +46,23 @@ export function LoginForm() {
 
   return (
     <AuthShell title={t("auth.login.title")} subtitle={t("auth.login.subtitle")}>
+      {kosmyError && (
+        <div className="mb-4">
+          <ErrorShake message={kosmyErrorMessage(t, kosmyError)} />
+        </div>
+      )}
+
+      {kosmyEnabled && (
+        <>
+          <KosmyBoardButton href={`/auth/kosmy-board/login?target_link_uri=${encodeURIComponent(next)}`} label={t("kosmy.button")} />
+          <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-on-surface-variant">
+            <span className="h-px flex-1 bg-primary/15" />
+            {t("kosmy.or")}
+            <span className="h-px flex-1 bg-primary/15" />
+          </div>
+        </>
+      )}
+
       <form onSubmit={onSubmit} className="space-y-4">
         <Field label={t("auth.login.email")}>
           <input

@@ -7,6 +7,7 @@ import { Icon } from "@/components/Icon";
 import { useI18n, useChangeLocale } from "@/lib/i18n/client";
 import { LOCALES, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { KosmyBoardSubmit, kosmyErrorMessage } from "@/components/KosmyBoard";
 
 type Props = {
   user: {
@@ -18,9 +19,12 @@ type Props = {
     mustChangePwd: boolean;
   };
   mustChangeBanner: boolean;
+  kosmy: KosmyState;
 };
 
-export function ProfileForm({ user, mustChangeBanner }: Props) {
+type KosmyState = { enabled: boolean; linked: boolean; justLinked: boolean; error: string | null };
+
+export function ProfileForm({ user, mustChangeBanner, kosmy }: Props) {
   const { t } = useI18n();
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -44,6 +48,7 @@ export function ProfileForm({ user, mustChangeBanner }: Props) {
 
       <IdentityCard user={user} />
       <PasswordCard mustChange={user.mustChangePwd} />
+      {(kosmy.enabled || kosmy.linked) && <KosmyBoardCard state={kosmy} />}
       <LanguageCard />
       <TokensCard />
     </div>
@@ -229,6 +234,90 @@ function LanguageCard() {
             {l === locale && <span className="ml-2 text-xs">✓</span>}
           </button>
         ))}
+      </div>
+    </Card>
+  );
+}
+
+function KosmyBoardCard({ state }: { state: KosmyState }) {
+  const { t } = useI18n();
+  const [linked, setLinked] = useState(state.linked);
+  const [confirming, setConfirming] = useState(false);
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(
+    state.error
+      ? { ok: false, text: kosmyErrorMessage(t, state.error) }
+      : state.justLinked
+        ? { ok: true, text: t("profile.kosmy.linkedNow") }
+        : null,
+  );
+
+  async function unlink(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setMsg(null);
+    const res = await fetch("/api/me/kosmy-board", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    setBusy(false);
+    if (res.ok) {
+      setLinked(false);
+      setConfirming(false);
+      setPassword("");
+      setMsg({ ok: true, text: t("profile.kosmy.unlinked") });
+    } else {
+      setMsg({ ok: false, text: t("profile.kosmy.wrongPassword") });
+    }
+  }
+
+  return (
+    <Card title={t("profile.kosmy.title")} description={t("profile.kosmy.desc")}>
+      <div className="space-y-4">
+        <p className="flex items-center gap-2 text-sm text-on-surface">
+          <Icon name={linked ? "verified_user" : "share"} size={16} className={linked ? "text-primary" : "text-on-surface-variant"} />
+          {linked ? t("profile.kosmy.linked") : t("profile.kosmy.notLinked")}
+        </p>
+
+        {!linked && state.enabled && (
+          // A real form post: the route starts the Kosmy Board flow and redirects to the Board.
+          <form method="post" action="/auth/kosmy-board/link" className="max-w-xs">
+            <KosmyBoardSubmit label={t("profile.kosmy.link")} />
+          </form>
+        )}
+
+        {linked && !confirming && (
+          <button onClick={() => setConfirming(true)} className="btn-danger">
+            {t("profile.kosmy.unlink")}
+          </button>
+        )}
+
+        {linked && confirming && (
+          <form onSubmit={unlink} className="space-y-3">
+            <p className="text-sm text-on-surface-variant">{t("profile.kosmy.unlinkHint")}</p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                type="password"
+                autoComplete="current-password"
+                required
+                className="input sm:max-w-xs"
+                placeholder={t("profile.kosmy.unlinkPassword")}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button type="submit" disabled={busy} className="btn-danger shrink-0">
+                {busy ? "…" : t("profile.kosmy.unlinkConfirm")}
+              </button>
+              <button type="button" onClick={() => setConfirming(false)} className="btn-ghost shrink-0">
+                {t("profile.kosmy.cancel")}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {msg && <p className={cn("text-sm", msg.ok ? "text-primary" : "text-error")}>{msg.text}</p>}
       </div>
     </Card>
   );

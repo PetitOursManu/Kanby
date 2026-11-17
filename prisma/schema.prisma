@@ -45,6 +45,9 @@ model User {
   /// If true, the user is forced to change their password on next visit.
   mustChangePwd    Boolean    @default(false)
   active           Boolean    @default(true)
+  /// Stable Kosmy Board account id (OpenID Connect `sub`) linked to this user.
+  /// Accounts are only ever matched on this value, never on the (unverified) email.
+  kosmySub         String?    @unique
   createdAt        DateTime   @default(now())
 
   ownedBoards      Board[]        @relation("BoardOwner")
@@ -56,6 +59,20 @@ model User {
   triggeredNotifs  Notification[] @relation("NotificationActor")
 
   @@index([globalRole])
+}
+
+/// "Se connecter avec Kosmy Board" (OpenID Connect) settings. Single row (id = 1),
+/// edited from the admin page. The client secret never leaves the server.
+model KosmyBoardSettings {
+  id           Int      @id @default(1)
+  /// Issuer, e.g. https://board.example.com/oidc (no trailing slash).
+  issuer       String
+  clientId     String
+  clientSecret String
+  /// Create a Kanby account on first sign-in for an unknown Kosmy Board account.
+  /// Off by default. Created accounts are never administrators.
+  autoCreate   Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
 }
 
 model ApiToken {

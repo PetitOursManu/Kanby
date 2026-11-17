@@ -159,6 +159,26 @@ Le compte admin a accès à un panneau **Admin** :
 - liste des utilisateurs, activation/désactivation, suppression, création
 - vue de tous les tableaux (personnels et d'équipe)
 - statistiques simples (utilisateurs, tableaux, tâches actives/terminées)
+- réglages de la connexion avec Kosmy Board (voir ci-dessous)
+
+---
+
+## Se connecter avec Kosmy Board (optionnel)
+
+Kanby accepte la connexion par **Kosmy Board** (OpenID Connect) : le bouton
+« Ouvrir » du Board connecte directement à Kanby, sans mot de passe propre à Kanby.
+
+1. Dans le Board, ajoutez l'instance Kanby puis ouvrez **Modifier → Connexion unique** et activez-la.
+   L'adresse de retour (`{APP_URL}/auth/kosmy-board/callback`) et l'adresse de lancement
+   (`{APP_URL}/auth/kosmy-board/login`) sont déjà remplies.
+2. Dans Kanby, **Admin → Connexion avec Kosmy Board** : collez l'émetteur, l'identifiant client et le
+   secret client affichés par le Board. Le secret n'est plus jamais réaffiché ensuite.
+3. Chaque utilisateur relie son compte depuis **Profil → Kosmy Board → Relier à Kosmy Board**
+   (une fois connecté avec son mot de passe).
+
+Sécurité : les comptes sont reliés par l'identifiant Kosmy Board (`sub`) uniquement, jamais par l'email
+(non vérifié par le Board). La création automatique de compte à la première connexion est désactivée par
+défaut et ne donne jamais de droits d'administration. `APP_URL` doit être l'adresse saisie dans le Board.
 
 ---
 

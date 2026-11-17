@@ -14,6 +14,10 @@ type AdminUser = {
   globalRole: "USER" | "ADMIN"; active: boolean; createdAt: Date;
   _count: { ownedBoards: number };
 };
+export type KosmyAdminSettings = {
+  issuer: string; clientId: string; autoCreate: boolean; hasSecret: boolean;
+  base: string; redirectUri: string; loginUri: string;
+};
 type AdminBoard = {
   id: string; name: string; type: "PERSONAL" | "TEAM"; updatedAt: Date;
   owner: { id: string; displayName: string; email: string };
@@ -25,11 +29,13 @@ export function AdminPanel({
   boards,
   stats,
   currentUserId,
+  kosmy,
 }: {
   users: AdminUser[];
   boards: AdminBoard[];
   stats: Stats;
   currentUserId: string;
+  kosmy: KosmyAdminSettings;
 }) {
   const { t } = useI18n();
   const [userList, setUserList] = useState(users);
@@ -133,6 +139,8 @@ export function AdminPanel({
         </section>
       </div>
 
+      <KosmyBoardSettingsCard initial={kosmy} />
+
       <AnimatePresence>
         {showCreate && (
           <CreateUserModal
@@ -144,6 +152,161 @@ export function AdminPanel({
           />
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/** "Connexion avec Kosmy Board" settings (OpenID Connect). The secret is write-only. */
+function KosmyBoardSettingsCard({ initial }: { initial: KosmyAdminSettings }) {
+  const { t } = useI18n();
+  const [issuer, setIssuer] = useState(initial.issuer);
+  const [clientId, setClientId] = useState(initial.clientId);
+  const [clientSecret, setClientSecret] = useState("");
+  const [autoCreate, setAutoCreate] = useState(initial.autoCreate);
+  const [hasSecret, setHasSecret] = useState(initial.hasSecret);
+  const [isOn, setIsOn] = useState(initial.hasSecret && !!initial.issuer);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/admin/kosmy-board", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ issuer, clientId, clientSecret, autoCreate }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const key = "admin.kosmy.error." + data.error;
+        const text = t(key);
+        setMsg({ ok: false, text: text === key ? data.error || t("misc.error") : text });
+        return;
+      }
+      // Never shown again: clear the field, keep only "a secret is saved".
+      setClientSecret("");
+      setHasSecret(true);
+      setIssuer(data.settings.issuer);
+      setIsOn(true);
+      setMsg(data.reachable ? { ok: true, text: t("admin.kosmy.saved") } : { ok: false, text: t("admin.kosmy.savedUnreachable") });
+    } catch {
+      setMsg({ ok: false, text: t("api.networkError") });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function disable() {
+    if (!confirm(t("admin.kosmy.disableConfirm"))) return;
+    const res = await fetch("/api/admin/kosmy-board", { method: "DELETE" });
+    if (res.ok) {
+      setIsOn(false);
+      setHasSecret(false);
+      setClientSecret("");
+      setMsg({ ok: true, text: t("admin.kosmy.disabled") });
+    }
+  }
+
+  const labelClass = "mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant";
+
+  return (
+    <section className="glass-elevated overflow-hidden rounded-xl">
+      <div className="flex items-center justify-between border-b border-primary/10 bg-primary/5 px-6 py-4">
+        <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-primary glow-text">{t("admin.kosmy.title")}</h2>
+        <span
+          className={cn(
+            "rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase",
+            isOn ? "border-primary/20 bg-primary/10 text-primary" : "border-on-surface-variant/20 bg-surface-container text-on-surface-variant",
+          )}
+        >
+          {isOn ? t("admin.kosmy.on") : t("admin.kosmy.off")}
+        </span>
+      </div>
+
+      <div className="grid gap-8 p-6 lg:grid-cols-2">
+        <form onSubmit={save} className="space-y-4">
+          <p className="text-sm text-on-surface-variant">{t("admin.kosmy.desc")}</p>
+          <div>
+            <label className={labelClass} htmlFor="kosmy-issuer">{t("admin.kosmy.issuer")}</label>
+            <input id="kosmy-issuer" className="input font-mono" value={issuer} onChange={(e) => setIssuer(e.target.value)} placeholder="https://board.example.com/oidc" required />
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="kosmy-client-id">{t("admin.kosmy.clientId")}</label>
+            <input id="kosmy-client-id" className="input font-mono" value={clientId} onChange={(e) => setClientId(e.target.value)} required autoComplete="off" />
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="kosmy-client-secret">{t("admin.kosmy.clientSecret")}</label>
+            <input
+              id="kosmy-client-secret"
+              type="password"
+              className="input font-mono"
+              value={clientSecret}
+              onChange={(e) => setClientSecret(e.target.value)}
+              placeholder={hasSecret ? t("admin.kosmy.secretKeep") : t("admin.kosmy.secretPlaceholder")}
+              required={!hasSecret}
+              autoComplete="new-password"
+            />
+          </div>
+          <label className="flex items-start gap-2 text-sm text-on-surface">
+            <input
+              type="checkbox"
+              checked={autoCreate}
+              onChange={(e) => setAutoCreate(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-primary/30 bg-surface-container accent-primary"
+            />
+            <span>
+              {t("admin.kosmy.autoCreate")}
+              <span className="mt-0.5 block text-xs text-on-surface-variant">{t("admin.kosmy.autoCreateHint")}</span>
+            </span>
+          </label>
+
+          {msg && <p className={cn("text-sm", msg.ok ? "text-primary" : "text-error")}>{msg.text}</p>}
+
+          <div className="flex gap-2">
+            <button type="submit" disabled={saving} className="btn-primary">
+              {saving ? t("admin.kosmy.saving") : t("admin.kosmy.save")}
+            </button>
+            {isOn && (
+              <button type="button" onClick={disable} className="btn-ghost">
+                {t("admin.kosmy.disable")}
+              </button>
+            )}
+          </div>
+        </form>
+
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold text-on-surface">{t("admin.kosmy.urls")}</h3>
+          <CopyField label={t("admin.kosmy.redirectUri")} value={initial.redirectUri} />
+          <CopyField label={t("admin.kosmy.loginUri")} value={initial.loginUri} />
+          <p className="text-xs text-on-surface-variant">{t("admin.kosmy.urlsHint", { base: initial.base })}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CopyField({ label, value }: { label: string; value: string }) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+  return (
+    <div>
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">{label}</p>
+      <div className="flex items-center gap-2">
+        <code className="flex-1 break-all rounded-lg border border-primary/10 bg-background/60 px-3 py-2 text-xs text-on-surface">{value}</code>
+        <button
+          type="button"
+          className="btn-ghost shrink-0 text-xs"
+          onClick={() => {
+            navigator.clipboard?.writeText(value);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          }}
+        >
+          {copied ? <Icon name="check" size={14} /> : t("profile.copy")}
+        </button>
+      </div>
     </div>
   );
 }

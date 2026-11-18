@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUser } from "@/lib/auth-guard";
+import { resolveUserFromRequest } from "@/lib/auth/unified";
 import { LOCALE_COOKIE, LOCALES } from "@/lib/i18n";
 import { badRequest, readJson } from "@/lib/validation";
 
@@ -12,14 +12,14 @@ export const runtime = "nodejs";
  * notifications reach them in their language).
  */
 export async function POST(req: NextRequest) {
-  const auth = await requireUser(req);
-  if ("error" in auth) return auth.error;
+  // Works signed out too (login page): then only the cookie is set.
+  const user = await resolveUserFromRequest(req);
 
   const body = await readJson<{ locale: string }>(req);
   const locale = body?.locale;
   if (!locale || !LOCALES.includes(locale as never)) return badRequest("Locale invalide");
 
-  await prisma.user.update({ where: { id: auth.user.id }, data: { locale } });
+  if (user) await prisma.user.update({ where: { id: user.id }, data: { locale } });
 
   const res = NextResponse.json({ ok: true, locale });
   res.cookies.set(LOCALE_COOKIE, locale, {

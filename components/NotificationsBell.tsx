@@ -1,12 +1,23 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
-import { Icon } from "@/components/Icon";
-import { Avatar } from "@/components/Avatar";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  ArrowRightLeft,
+  Bell,
+  Columns3,
+  MessageSquare,
+  Pencil,
+  Trash2,
+  UserMinus,
+  UserPlus,
+  UserRoundCheck,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
+import { timeAgo } from "@/lib/format";
 
 type NotifItem = {
   id: string;
@@ -14,103 +25,102 @@ type NotifItem = {
   message: string;
   read: boolean;
   createdAt: string;
-  actor: { id: string; displayName: string; avatarUrl: string | null } | null;
   board: { id: string; name: string } | null;
   card: { id: string; title: string } | null;
 };
 
-const KIND_ICONS: Record<string, string> = {
-  card_assigned: "person",
-  card_moved: "swap_horiz",
-  card_updated: "edit",
-  card_commented: "comment",
-  member_added: "person_add",
-  member_removed: "person_remove",
-  board_updated: "edit",
-  column_added: "add",
-  column_deleted: "delete",
+const KIND_ICONS: Record<string, LucideIcon> = {
+  card_assigned: UserRoundCheck,
+  card_moved: ArrowRightLeft,
+  card_updated: Pencil,
+  card_commented: MessageSquare,
+  member_added: UserPlus,
+  member_removed: UserMinus,
+  board_updated: Pencil,
+  column_added: Columns3,
+  column_deleted: Trash2,
 };
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return "now";
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  const d = Math.floor(h / 24);
-  if (d < 7) return `${d}d`;
-  return new Date(iso).toLocaleDateString();
-}
+const POLL_MS = 30_000;
 
 export function NotificationsBell() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotifItem[]>([]);
   const [unread, setUnread] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  async function load() {
-    setLoading(true);
-    const res = await fetch("/api/notifications");
-    if (res.ok) {
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/notifications", { cache: "no-store" });
+      if (!res.ok) return;
       const data = await res.json();
       setItems(data.notifications || []);
       setUnread(data.unreadCount || 0);
+    } catch {
+      /* offline: keep the last state */
+    } finally {
+      setLoaded(true);
     }
-    setLoading(false);
-  }
+  }, []);
 
+  // Poll while the tab is visible.
   useEffect(() => {
     load();
-    // Poll every 30 seconds for new notifications.
-    const interval = setInterval(load, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    const tick = () => document.visibilityState === "visible" && load();
+    const interval = setInterval(tick, POLL_MS);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [load]);
 
   useEffect(() => {
-    function onClick(e: MouseEvent) {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, []);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
-  async function markAllRead() {
-    await fetch("/api/notifications/read", {
+  async function markRead(id?: string) {
+    const res = await fetch("/api/notifications", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    setItems((arr) => arr.map((n) => ({ ...n, read: true })));
-    setUnread(0);
+      body: JSON.stringify(id ? { id } : {}),
+    }).catch(() => null);
+    if (!res?.ok) return;
+    setItems((arr) => arr.map((n) => (!id || n.id === id ? { ...n, read: true } : n)));
+    setUnread((u) => (id ? Math.max(0, u - 1) : 0));
   }
 
-  async function markOne(id: string) {
-    await fetch("/api/notifications/read", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    setItems((arr) => arr.map((n) => (n.id === id ? { ...n, read: true } : n)));
-    setUnread((u) => Math.max(0, u - 1));
-  }
+  const label = unread > 0 ? t("notif.titleUnread", { count: unread }) : t("notif.title");
 
   return (
     <div className="relative" ref={ref}>
       <button
+        type="button"
         onClick={() => {
           setOpen((v) => !v);
           if (!open) load();
         }}
-        className="relative flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-primary/5 hover:text-primary"
-        aria-label={t("notif.title")}
-        title={t("notif.title")}
+        className="icon-btn relative border border-line"
+        aria-label={label}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        title={label}
       >
-        <Icon name="notifications" size={18} />
+        <Bell size={16} />
         {unread > 0 && (
-          <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-on-primary shadow-glow-sm">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold leading-none text-on-accent">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -119,62 +129,66 @@ export function NotificationsBell() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.97 }}
-            className="glass-elevated absolute right-0 top-11 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-xl p-2 shadow-lift"
+            role="dialog"
+            aria-label={t("notif.title")}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.12 }}
+            className="absolute right-0 top-10 z-50 w-[22rem] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl border border-line bg-surface shadow-pop"
           >
-            <div className="flex items-center justify-between px-3 py-2">
-              <span className="text-sm font-semibold text-on-surface">{t("notif.title")}</span>
+            <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
+              <span className="text-sm font-semibold text-fg">{t("notif.title")}</span>
               {unread > 0 && (
-                <button
-                  onClick={markAllRead}
-                  className="text-xs text-primary transition-colors hover:underline"
-                >
+                <button type="button" onClick={() => markRead()} className="text-xs font-medium text-accent-fg hover:underline">
                   {t("notif.markAllRead")}
                 </button>
               )}
             </div>
 
-            <div className="max-h-80 overflow-y-auto">
-              {loading && items.length === 0 ? (
-                <p className="px-3 py-6 text-center text-sm text-on-surface-variant">…</p>
+            <div className="max-h-[22rem] overflow-y-auto p-1.5">
+              {!loaded ? (
+                <p className="px-3 py-8 text-center text-sm text-muted">{t("card.loading")}</p>
               ) : items.length === 0 ? (
-                <p className="px-3 py-6 text-center text-sm text-on-surface-variant">{t("notif.empty")}</p>
+                <div className="flex flex-col items-center gap-2 px-3 py-10 text-center">
+                  <Bell size={20} className="text-faint" />
+                  <p className="text-sm text-muted">{t("notif.empty")}</p>
+                </div>
               ) : (
-                <ul className="space-y-0.5">
+                <ul className="flex flex-col gap-0.5">
                   {items.map((n) => {
-                    const href = n.board ? `/boards/${n.board.id}` : null;
-                    const inner = (
-                      <div
-                        className={cn(
-                          "flex gap-2.5 rounded-lg px-3 py-2.5 transition-colors",
-                          !n.read && "bg-primary/5",
-                          href && "hover:bg-primary/10 cursor-pointer",
-                        )}
-                        onClick={() => {
-                          if (!n.read) markOne(n.id);
-                          if (href) setOpen(false);
-                        }}
-                      >
-                        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-primary">
-                          <Icon name={KIND_ICONS[n.kind] ?? "notifications"} size={14} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm leading-snug text-on-surface">{n.message}</p>
-                          <p className="mt-0.5 text-xs text-on-surface-variant">{timeAgo(n.createdAt)}</p>
-                        </div>
-                        {!n.read && (
-                          <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                        )}
-                      </div>
+                    const Icon = KIND_ICONS[n.kind] ?? Bell;
+                    const href = n.board ? `/boards/${n.board.id}${n.card ? `?card=${n.card.id}` : ""}` : null;
+                    const body = (
+                      <>
+                        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sunken text-muted">
+                          <Icon size={14} />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className={cn("block text-[13px] leading-snug", n.read ? "text-muted" : "text-fg")}>{n.message}</span>
+                          <span className="mt-0.5 block text-xs text-faint">{timeAgo(n.createdAt, locale)}</span>
+                        </span>
+                        {!n.read && <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-accent" aria-label={t("notif.unread")} />}
+                      </>
                     );
+                    const cls = cn(
+                      "flex w-full gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-hover",
+                      !n.read && "bg-accent-soft/60",
+                    );
+                    const onClick = () => {
+                      if (!n.read) markRead(n.id);
+                      if (href) setOpen(false);
+                    };
                     return (
                       <li key={n.id}>
                         {href ? (
-                          <Link href={href}>{inner}</Link>
+                          <Link href={href} className={cls} onClick={onClick}>
+                            {body}
+                          </Link>
                         ) : (
-                          inner
+                          <button type="button" className={cls} onClick={onClick}>
+                            {body}
+                          </button>
                         )}
                       </li>
                     );

@@ -1,12 +1,17 @@
+import { redirect } from "next/navigation";
 import { getServerLocale } from "@/lib/i18n/server";
 import { I18nProvider } from "@/lib/i18n/client";
+import { getSessionUser } from "@/lib/auth/session";
+import { registrationAllowed } from "@/lib/registration";
 import { RegisterForm } from "./RegisterForm";
 
+export const dynamic = "force-dynamic";
+
 export default async function RegisterPage() {
-  const locale = getServerLocale();
+  if (await getSessionUser()) redirect("/boards");
   return (
-    <I18nProvider locale={locale}>
-      <RegisterForm />
+    <I18nProvider locale={getServerLocale()}>
+      <RegisterForm allowed={registrationAllowed()} />
     </I18nProvider>
   );
 }

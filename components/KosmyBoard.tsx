@@ -3,7 +3,7 @@
  */
 
 const BUTTON_CLASS =
-  "glass-button w-full border-tertiary/30 bg-tertiary/10 py-2.5 text-tertiary hover:bg-tertiary/15";
+  "btn-secondary h-10 w-full";
 
 /** Message for a `kosmy_error` code returned by the Kosmy Board sign-in routes. */
 export function kosmyErrorMessage(t: (key: string) => string, code: string): string {

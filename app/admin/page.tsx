@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { getServerTranslator } from "@/lib/i18n/server";
 import { AdminPanel } from "./AdminPanel";
 import { requirePageUser } from "@/lib/auth/page";
 import { prisma } from "@/lib/prisma";
@@ -49,7 +50,7 @@ export default async function AdminPage() {
   };
 
   return (
-    <AppShell active="admin">
+    <AppShell active="admin" title={getServerTranslator()("admin.title")}>
       <AdminPanel users={users} boards={boards} stats={stats} currentUserId={user.id} kosmy={kosmy} />
     </AppShell>
   );

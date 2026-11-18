@@ -74,3 +74,48 @@ describe("formatDueDate", () => {
     expect(formatDueDate("2024-01-15T00:00:00Z")!.length).toBeGreaterThan(0);
   });
 });
+import { getTranslator, translateApiError } from "@/lib/i18n";
+import { dueState, dayKey, formatDay } from "@/lib/format";
+import { safeNext } from "@/lib/safe-redirect";
+import { fr } from "@/lib/i18n/fr";
+import { en } from "@/lib/i18n/en";
+
+describe("i18n", () => {
+  it("has the same keys in French and English", () => {
+    expect(Object.keys(en).sort()).toEqual(Object.keys(fr).sort());
+  });
+  it("uses the _one form when count is 1", () => {
+    const t = getTranslator("en");
+    expect(t("boards.tasksCount", { count: 1 })).toBe("1 task");
+    expect(t("boards.tasksCount", { count: 3 })).toBe("3 tasks");
+  });
+  it("translates known API errors", () => {
+    expect(translateApiError("Identifiants invalides", getTranslator("en"))).toBe("Invalid credentials");
+    expect(translateApiError("Something else", getTranslator("en"))).toBe("Something else");
+  });
+});
+
+describe("due dates (calendar days)", () => {
+  const now = new Date(2030, 0, 15, 23, 30); // local 15 Jan, late evening
+  it("compares days, not instants", () => {
+    expect(dueState("2030-01-14T00:00:00.000Z", now)).toBe("overdue");
+    expect(dueState("2030-01-15T00:00:00.000Z", now)).toBe("today");
+    expect(dueState("2030-01-17T00:00:00.000Z", now)).toBe("soon");
+    expect(dueState("2030-02-20T00:00:00.000Z", now)).toBe("later");
+    expect(dueState(null, now)).toBeNull();
+  });
+  it("formats in UTC so the day never shifts", () => {
+    expect(dayKey("2030-01-15T00:00:00.000Z")).toBe("2030-01-15");
+    expect(formatDay("2030-01-15T00:00:00.000Z", "en")).toBe("15 Jan");
+  });
+});
+
+describe("safeNext", () => {
+  it("only allows same-site paths", () => {
+    expect(safeNext("/boards/abc")).toBe("/boards/abc");
+    expect(safeNext("https://evil.example")).toBe("/boards");
+    expect(safeNext("//evil.example")).toBe("/boards");
+    expect(safeNext("/\\evil.example")).toBe("/boards");
+    expect(safeNext(null)).toBe("/boards");
+  });
+});

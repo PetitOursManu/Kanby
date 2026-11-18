@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { isOverdue, isDueToday } from "@/lib/utils";
+import { dueState } from "@/lib/format";
 import type { User } from "@prisma/client";
 
 export type WidgetItem = {
@@ -33,16 +33,16 @@ export async function buildWidgetSummary(user: User): Promise<WidgetSummary> {
     return { dueToday: [], overdue: [], upcoming: [], counts: { dueToday: 0, overdue: 0, upcoming: 0, totalOpen: 0 } };
   }
 
-  const cards = await prisma.card.findMany({
-    where: {
-      boardId: { in: visibleBoardIds },
-      dueDate: { not: null },
-      completedAt: null,
-    },
-    include: { board: { select: { id: true, name: true, type: true } } },
-    orderBy: { dueDate: "asc" },
-    take: 50,
-  });
+  const openWhere = { boardId: { in: visibleBoardIds }, completedAt: null };
+  const [cards, totalOpen] = await Promise.all([
+    prisma.card.findMany({
+      where: { ...openWhere, dueDate: { not: null } },
+      include: { board: { select: { id: true, name: true, type: true } } },
+      orderBy: { dueDate: "asc" },
+      take: 200,
+    }),
+    prisma.card.count({ where: openWhere }),
+  ]);
 
   const items: WidgetItem[] = cards.map((c) => ({
     id: c.id,
@@ -53,15 +53,17 @@ export async function buildWidgetSummary(user: User): Promise<WidgetSummary> {
     boardType: c.board.type,
   }));
 
-  const dueToday = items.filter((i) => isDueToday(i.dueDate));
-  const overdue = items.filter((i) => isOverdue(i.dueDate) && !isDueToday(i.dueDate));
+  // Due dates are calendar days (see lib/format): compare days, not instants.
   const now = new Date();
   const weekEnd = new Date(now);
   weekEnd.setDate(weekEnd.getDate() + 7);
+  const weekEndKey = weekEnd.toISOString().slice(0, 10);
+  const dueToday = items.filter((i) => dueState(i.dueDate, now) === "today");
+  const overdue = items.filter((i) => dueState(i.dueDate, now) === "overdue");
   const upcoming = items
     .filter((i) => {
-      const d = new Date(i.dueDate);
-      return d > now && d <= weekEnd && !isDueToday(i.dueDate);
+      const st = dueState(i.dueDate, now);
+      return (st === "soon" || st === "later") && i.dueDate.slice(0, 10) <= weekEndKey;
     })
     .slice(0, 5);
 
@@ -73,7 +75,7 @@ export async function buildWidgetSummary(user: User): Promise<WidgetSummary> {
       dueToday: dueToday.length,
       overdue: overdue.length,
       upcoming: upcoming.length,
-      totalOpen: items.length,
+      totalOpen,
     },
   };
 }

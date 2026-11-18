@@ -1,100 +1,70 @@
 "use client";
 
-import { Icon } from "@/components/Icon";
-import { formatDueDate, isOverdue } from "@/lib/utils";
+import { LogoMark } from "@/components/Logo";
 import { useI18n } from "@/lib/i18n/client";
+import { formatDay } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { WidgetSummary, WidgetItem } from "@/lib/widget-summary";
 
-export function WidgetViewClient({
-  summary,
-  displayName,
-}: {
-  summary: WidgetSummary;
-  displayName: string;
-}) {
+export function WidgetViewClient({ summary, displayName }: { summary: WidgetSummary; displayName: string }) {
   const { t } = useI18n();
   const { dueToday, overdue, upcoming, counts } = summary;
 
   return (
     <div className="space-y-3">
-      {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-lg border border-primary/30 bg-primary/20 text-xs font-bold text-primary">
-            <Icon name="ac_unit" size={14} />
-          </span>
-          <span className="text-sm font-semibold text-on-surface">Kanby</span>
-        </div>
-        <span className="max-w-[8rem] truncate text-xs text-on-surface-variant">{displayName}</span>
+        <span className="flex items-center gap-2">
+          <LogoMark size={22} />
+          <span className="text-sm font-semibold text-fg">Kanby</span>
+        </span>
+        <span className="max-w-[9rem] truncate text-xs text-muted">{displayName}</span>
       </div>
 
-      {/* Counters */}
       <div className="grid grid-cols-3 gap-2">
-        <Counter value={counts.dueToday} label={t("widget.today")} tone="amber" />
-        <Counter value={counts.overdue} label={t("widget.overdue")} tone="rose" />
-        <Counter value={counts.totalOpen} label={t("widget.inProgress")} tone="primary" />
+        <Counter value={counts.dueToday} label={t("widget.today")} tone="text-warn" />
+        <Counter value={counts.overdue} label={t("widget.overdue")} tone="text-danger" />
+        <Counter value={counts.totalOpen} label={t("widget.inProgress")} tone="text-accent-fg" />
       </div>
 
-      {/* Lists */}
       <div className="space-y-3">
-        {dueToday.length > 0 && (
-          <Section title={t("widget.today")} items={dueToday} accent="#f59e0b" />
-        )}
-        {overdue.length > 0 && (
-          <Section title={t("widget.overdue")} items={overdue} accent="#f43f5e" />
-        )}
-        {upcoming.length > 0 && (
-          <Section title={t("widget.upcoming")} items={upcoming} accent="#7dd3fc" />
-        )}
+        {overdue.length > 0 && <Section title={t("widget.overdue")} items={overdue} dot="bg-danger" />}
+        {dueToday.length > 0 && <Section title={t("widget.today")} items={dueToday} dot="bg-warn" />}
+        {upcoming.length > 0 && <Section title={t("widget.upcoming")} items={upcoming} dot="bg-accent" />}
         {dueToday.length === 0 && overdue.length === 0 && upcoming.length === 0 && (
-          <p className="glass-panel rounded-xl p-4 text-center text-sm text-on-surface-variant">
-            {t("widget.noTasks")}
-          </p>
+          <p className="panel p-4 text-center text-sm text-muted">{t("widget.noTasks")}</p>
         )}
       </div>
     </div>
   );
 }
 
-function Counter({ value, label, tone }: { value: number; label: string; tone: "amber" | "rose" | "primary" }) {
-  const colors = {
-    amber: "from-amber-500/20 to-amber-500/5 text-amber-300 border-amber-500/20",
-    rose: "from-rose-500/20 to-rose-500/5 text-rose-300 border-rose-500/20",
-    primary: "from-primary/20 to-primary/5 text-primary border-primary/20",
-  }[tone];
+function Counter({ value, label, tone }: { value: number; label: string; tone: string }) {
   return (
-    <div className={`glass-panel rounded-xl border bg-gradient-to-b ${colors} p-2 text-center`}>
-      <p className="text-xl font-bold tabular-nums">{value}</p>
-      <p className="text-[10px] uppercase tracking-wide opacity-80">{label}</p>
+    <div className="panel p-2 text-center">
+      <p className={cn("text-xl font-semibold tabular-nums", tone)}>{value}</p>
+      <p className="text-[10px] font-medium uppercase tracking-wide text-muted">{label}</p>
     </div>
   );
 }
 
-function Section({ title, items, accent }: { title: string; items: WidgetItem[]; accent: string }) {
+function Section({ title, items, dot }: { title: string; items: WidgetItem[]; dot: string }) {
+  const { locale } = useI18n();
   return (
     <div>
-      <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accent }} />
+      <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+        <span className={cn("h-1.5 w-1.5 rounded-full", dot)} />
         {title}
       </p>
       <ul className="space-y-1.5">
-        {items.map((item) => {
-          const due = formatDueDate(item.dueDate);
-          const od = isOverdue(item.dueDate);
-          return (
-            <li key={item.id} className="glass-panel rounded-lg p-2">
-              <p className="text-sm font-medium leading-snug text-on-surface">{item.title}</p>
-              <div className="mt-1 flex items-center justify-between text-[11px] text-on-surface-variant">
-                <span className="truncate">{item.boardName}</span>
-                {due && (
-                  <span style={{ color: od ? "#ff6b6b" : undefined }} className="ml-2 shrink-0">
-                    {due}
-                  </span>
-                )}
-              </div>
-            </li>
-          );
-        })}
+        {items.map((item) => (
+          <li key={item.id} className="panel flex items-center gap-2 px-3 py-2">
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] font-medium text-fg">{item.title}</span>
+              <span className="block truncate text-[11px] text-muted">{item.boardName}</span>
+            </span>
+            <span className="shrink-0 text-[11px] tabular-nums text-muted">{formatDay(item.dueDate, locale)}</span>
+          </li>
+        ))}
       </ul>
     </div>
   );

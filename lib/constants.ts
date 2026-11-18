@@ -1,14 +1,14 @@
-/** Label color palette offered in the UI. */
+/** Label color palette offered in the UI (names: i18n `color.<key>`). */
 export const LABEL_COLORS = [
-  { name: "Rouge", value: "#f43f5e" },
-  { name: "Ambre", value: "#f59e0b" },
-  { name: "Émeraude", value: "#10b981" },
-  { name: "Cyan", value: "#06b6d4" },
-  { name: "Bleu", value: "#3380fc" },
-  { name: "Violet", value: "#8b5cf6" },
-  { name: "Rose", value: "#ec4899" },
-  { name: "Indigo", value: "#6366f1" },
-  { name: "Gris", value: "#64748b" },
+  { key: "red", value: "#f43f5e" },
+  { key: "amber", value: "#f59e0b" },
+  { key: "emerald", value: "#10b981" },
+  { key: "cyan", value: "#06b6d4" },
+  { key: "blue", value: "#3380fc" },
+  { key: "violet", value: "#8b5cf6" },
+  { key: "pink", value: "#ec4899" },
+  { key: "indigo", value: "#6366f1" },
+  { key: "gray", value: "#64748b" },
 ];
 
 /** Cookie name holding the session JWT. */

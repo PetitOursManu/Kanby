@@ -24,7 +24,9 @@ const dictionaries: Record<Locale, Record<string, string>> = { fr, en };
 export function getTranslator(locale: Locale) {
   const dict = dictionaries[locale] ?? dictionaries[DEFAULT_LOCALE];
   return function t(key: string, vars?: Record<string, string | number>): string {
-    let s = dict[key] ?? dictionaries[DEFAULT_LOCALE][key] ?? key;
+    // Simple plural: "<key>_one" is used when vars.count === 1.
+    const k = vars?.count === 1 && (dict[`${key}_one`] ?? dictionaries[DEFAULT_LOCALE][`${key}_one`]) ? `${key}_one` : key;
+    let s = dict[k] ?? dictionaries[DEFAULT_LOCALE][k] ?? key;
     if (vars) {
       for (const [k, v] of Object.entries(vars)) {
         s = s.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
@@ -40,4 +42,17 @@ export type Translator = ReturnType<typeof getTranslator>;
 export function parseLocale(value: string | null | undefined): Locale {
   if (value === "en") return "en";
   return "fr";
+}
+/**
+ * API routes answer with French messages. Translate a known message into the
+ * given locale (falls back to the original text).
+ */
+const reverseApi = new Map<string, string>(
+  Object.entries(fr)
+    .filter(([k]) => k.startsWith("api."))
+    .map(([k, v]) => [v, k]),
+);
+export function translateApiError(message: string, t: Translator): string {
+  const key = reverseApi.get(message);
+  return key ? t(key) : message;
 }

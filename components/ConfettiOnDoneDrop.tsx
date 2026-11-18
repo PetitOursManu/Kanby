@@ -20,7 +20,7 @@ export function ConfettiOnDoneDrop() {
         spread: 75,
         startVelocity: 38,
         origin: { y: 0.7 },
-        colors: ["#7dd3fc", "#c8a0f0", "#88b4cc", "#10b981", "#f59e0b"],
+        colors: ["#10b981", "#34d399", "#059669", "#f59e0b", "#8b5cf6"],
         disableForReducedMotion: true,
       });
       if (!mounted) return;
@@ -46,7 +46,7 @@ export function ConfettiOnDoneDrop() {
         >
           <svg width="72" height="72" viewBox="0 0 52 52">
             <motion.circle
-              cx="26" cy="26" r="24" fill="#10b981"
+              cx="26" cy="26" r="24" fill="#059669"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 300, damping: 16 }}

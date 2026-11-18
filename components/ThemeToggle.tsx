@@ -2,42 +2,45 @@
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Icon } from "@/components/Icon";
+import { Monitor, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
 
+/** Segmented control: light / system / dark. */
 export function ThemeToggle({ className }: { className?: string }) {
-  const { resolvedTheme, setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { t } = useI18n();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const isDark = resolvedTheme === "dark";
+  const options = [
+    { value: "light", label: t("theme.light"), Icon: Sun },
+    { value: "system", label: t("theme.system"), Icon: Monitor },
+    { value: "dark", label: t("theme.dark"), Icon: Moon },
+  ] as const;
 
   return (
-    <button
-      type="button"
-      aria-label={t("nav.toggleTheme")}
-      onClick={() => setTheme(isDark ? "light" : "dark")}
-      className={cn(
-        "inline-flex h-9 w-9 items-center justify-center rounded-full border border-primary/20 text-on-surface-variant transition-colors hover:bg-primary/5 hover:text-primary",
-        className,
-      )}
-    >
-      {mounted ? (
-        <motion.span
-          key={isDark ? "moon" : "sun"}
-          initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
-          animate={{ rotate: 0, opacity: 1, scale: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="inline-flex"
-        >
-          <Icon name={isDark ? "sun" : "moon"} size={18} />
-        </motion.span>
-      ) : (
-        <span className="h-[18px] w-[18px]" />
-      )}
-    </button>
+    <div role="radiogroup" aria-label={t("nav.toggleTheme")} className={cn("inline-flex rounded-lg border border-line p-0.5", className)}>
+      {options.map(({ value, label, Icon }) => {
+        const active = mounted && theme === value;
+        return (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            aria-label={label}
+            title={label}
+            onClick={() => setTheme(value)}
+            className={cn(
+              "inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+              active ? "bg-accent-soft text-accent-fg" : "text-faint hover:text-fg",
+            )}
+          >
+            <Icon size={14} strokeWidth={2} />
+          </button>
+        );
+      })}
+    </div>
   );
 }

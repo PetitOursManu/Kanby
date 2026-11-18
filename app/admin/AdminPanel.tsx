@@ -1,28 +1,64 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  CheckCircle2,
+  Check,
+  Copy,
+  KanbanSquare,
+  KeyRound,
+  ListChecks,
+  MoreHorizontal,
+  Power,
+  Search,
+  Shield,
+  ShieldOff,
+  Trash2,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import { Avatar } from "@/components/Avatar";
-import { Icon } from "@/components/Icon";
+import { Modal } from "@/components/Modal";
+import { Menu, MenuItem, MenuSeparator } from "@/components/Menu";
+import { useConfirm } from "@/components/Confirm";
+import { useToast } from "@/components/Toast";
+import { apiDelete, apiPatch, apiPost } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
+import { translateApiError } from "@/lib/i18n";
+import { TimeAgo } from "@/components/TimeAgo";
 
 type Stats = { users: number; boards: number; activeTasks: number; completedTasks: number };
 type AdminUser = {
-  id: string; email: string; displayName: string; avatarUrl: string | null;
-  globalRole: "USER" | "ADMIN"; active: boolean; createdAt: Date;
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  globalRole: "USER" | "ADMIN";
+  active: boolean;
+  createdAt: Date | string;
   _count: { ownedBoards: number };
 };
 export type KosmyAdminSettings = {
-  issuer: string; clientId: string; autoCreate: boolean; hasSecret: boolean;
-  base: string; redirectUri: string; loginUri: string;
+  issuer: string;
+  clientId: string;
+  autoCreate: boolean;
+  hasSecret: boolean;
+  base: string;
+  redirectUri: string;
+  loginUri: string;
 };
 type AdminBoard = {
-  id: string; name: string; type: "PERSONAL" | "TEAM"; updatedAt: Date;
+  id: string;
+  name: string;
+  type: "PERSONAL" | "TEAM";
+  updatedAt: Date | string;
   owner: { id: string; displayName: string; email: string };
   _count: { cards: number; members: number };
 };
+
+type Tab = "users" | "boards" | "kosmy";
 
 export function AdminPanel({
   users,
@@ -39,126 +75,378 @@ export function AdminPanel({
 }) {
   const { t } = useI18n();
   const [userList, setUserList] = useState(users);
+  const [boardList, setBoardList] = useState(boards);
   const [showCreate, setShowCreate] = useState(false);
+  const [tab, setTab] = useState<Tab>("users");
+
+  const tabs: { key: Tab; label: string; count?: number }[] = [
+    { key: "users", label: t("admin.users"), count: userList.length },
+    { key: "boards", label: t("admin.allBoards"), count: boardList.length },
+    { key: "kosmy", label: "Kosmy Board" },
+  ];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
-      {/* Header */}
-      <div className="glass-panel relative overflow-hidden rounded-xl p-6">
-        <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-tertiary to-transparent"></div>
-        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-on-surface glow-text">{t("admin.title")}</h1>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-on-surface-variant">{t("admin.subtitle")}</p>
-          </div>
-          <button onClick={() => setShowCreate(true)} className="btn-primary">
-            <Icon name="person_add" size={16} />
-            {t("admin.createUser")}
-          </button>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-fg">{t("admin.title")}</h2>
+          <p className="mt-1 text-sm text-muted">{t("admin.subtitle")}</p>
         </div>
+        <button type="button" onClick={() => setShowCreate(true)} className="btn-primary">
+          <UserPlus size={16} /> {t("admin.createUser")}
+        </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label={t("admin.users")} value={stats.users} icon="group" />
-        <StatCard label={t("admin.boards")} value={stats.boards} icon="view_kanban" />
-        <StatCard label={t("admin.activeTasks")} value={stats.activeTasks} icon="trending_up" />
-        <StatCard label={t("admin.completedTasks")} value={stats.completedTasks} icon="check_circle" />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label={t("admin.users")} value={userList.length || stats.users} icon={<Users size={16} />} />
+        <StatCard label={t("admin.boards")} value={boardList.length || stats.boards} icon={<KanbanSquare size={16} />} />
+        <StatCard label={t("admin.activeTasks")} value={stats.activeTasks} icon={<ListChecks size={16} />} />
+        <StatCard label={t("admin.completedTasks")} value={stats.completedTasks} icon={<CheckCircle2 size={16} />} />
       </div>
 
-      {/* Two columns */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <section className="glass-elevated flex flex-col overflow-hidden rounded-xl">
-          <div className="flex items-center justify-between border-b border-primary/10 bg-primary/5 px-6 py-4">
-            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-primary glow-text">{t("admin.users")}</h2>
-            <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
-              {userList.length} {t("admin.total")}
-            </span>
-          </div>
-          <ul className="divide-y divide-primary/5">
-            {userList.map((u) => (
-              <UserRow
-                key={u.id}
-                user={u}
-                isSelf={u.id === currentUserId}
-                onRemoved={() => setUserList((l) => l.filter((x) => x.id !== u.id))}
-              />
-            ))}
-          </ul>
-        </section>
-
-        <section className="glass-elevated flex flex-col overflow-hidden rounded-xl">
-          <div className="flex items-center justify-between border-b border-primary/10 bg-primary/5 px-6 py-4">
-            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-primary glow-text">{t("admin.allBoards")}</h2>
-            <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary">
-              {boards.length} {t("admin.total")}
-            </span>
-          </div>
-          <div className="flex-1 overflow-auto p-4">
-            <div className="space-y-3">
-              {boards.map((b) => (
-                <Link
-                  key={b.id}
-                  href={`/boards/${b.id}`}
-                  className="glass-panel flex items-center justify-between rounded-lg p-4 transition-all hover:border-primary/30 hover:bg-surface/80"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-primary/10 bg-surface-container-high/40 text-on-surface-variant transition-colors">
-                      <Icon name="view_kanban" size={20} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-on-surface">{b.name}</h3>
-                      <div className="flex items-center gap-2 text-xs text-on-surface-variant">
-                        <span className={cn(
-                          "rounded border px-2 py-0.5 text-[10px] font-bold uppercase",
-                          b.type === "TEAM"
-                            ? "border-tertiary/20 bg-tertiary/10 text-tertiary"
-                            : "border-primary/20 bg-primary/10 text-primary",
-                        )}>
-                          {b.type === "TEAM" ? t("boards.team") : t("boards.personal")}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Icon name="group" size={12} /> {b._count.members}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">{t("boards.owner")}</p>
-                    <p className={cn("text-sm font-medium", b.owner.id === currentUserId ? "text-primary" : "text-on-surface")}>
-                      {b.owner.displayName}
-                    </p>
-                  </div>
-                </Link>
-              ))}
-              {boards.length === 0 && (
-                <p className="py-6 text-center text-sm text-on-surface-variant">{t("admin.noBoards")}</p>
-              )}
-            </div>
-          </div>
-        </section>
+      <div role="tablist" aria-label={t("admin.title")} className="flex gap-1 border-b border-line">
+        {tabs.map((x) => (
+          <button
+            key={x.key}
+            role="tab"
+            type="button"
+            aria-selected={tab === x.key}
+            onClick={() => setTab(x.key)}
+            className={cn(
+              "-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors",
+              tab === x.key ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg",
+            )}
+          >
+            {x.label}
+            {x.count !== undefined && <span className="rounded-full bg-sunken px-1.5 text-xs text-muted">{x.count}</span>}
+          </button>
+        ))}
       </div>
 
-      <KosmyBoardSettingsCard initial={kosmy} />
+      {tab === "users" && (
+        <UsersTable
+          users={userList}
+          currentUserId={currentUserId}
+          onChange={(u) => setUserList((list) => list.map((x) => (x.id === u.id ? { ...x, ...u } : x)))}
+          onRemoved={(id) => {
+            setUserList((list) => list.filter((x) => x.id !== id));
+            setBoardList((list) => list.filter((b) => b.owner.id !== id));
+          }}
+        />
+      )}
+      {tab === "boards" && <BoardsTable boards={boardList} />}
+      {tab === "kosmy" && <KosmyBoardSettingsCard initial={kosmy} />}
 
-      <AnimatePresence>
-        {showCreate && (
-          <CreateUserModal
-            onClose={() => setShowCreate(false)}
-            onCreated={(u) => {
-              setUserList((l) => [u, ...l]);
-              setShowCreate(false);
-            }}
-          />
-        )}
-      </AnimatePresence>
+      <CreateUserModal open={showCreate} onClose={() => setShowCreate(false)} onCreated={(u) => setUserList((list) => [u, ...list])} />
     </div>
   );
 }
 
-/** "Connexion avec Kosmy Board" settings (OpenID Connect). The secret is write-only. */
+function StatCard({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
+  return (
+    <div className="panel p-4">
+      <p className="flex items-center gap-2 text-xs font-medium text-muted">
+        {icon}
+        {label}
+      </p>
+      <p className="mt-2 text-2xl font-semibold tabular-nums text-fg">{value}</p>
+    </div>
+  );
+}
+
+function UsersTable({
+  users,
+  currentUserId,
+  onChange,
+  onRemoved,
+}: {
+  users: AdminUser[];
+  currentUserId: string;
+  onChange: (u: Partial<AdminUser> & { id: string }) => void;
+  onRemoved: (id: string) => void;
+}) {
+  const { t } = useI18n();
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [q, setQ] = useState("");
+  const [resetFor, setResetFor] = useState<AdminUser | null>(null);
+
+  const shown = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return s ? users.filter((u) => u.displayName.toLowerCase().includes(s) || u.email.toLowerCase().includes(s)) : users;
+  }, [users, q]);
+
+  async function update(u: AdminUser, body: { active?: boolean; globalRole?: "USER" | "ADMIN" }) {
+    try {
+      await apiPatch("/api/admin/users", { userId: u.id, ...body });
+      onChange({ id: u.id, ...body });
+    } catch (e) {
+      toast.error(e);
+    }
+  }
+
+  async function remove(u: AdminUser) {
+    const ok = await confirm({
+      title: t("admin.deleteUserConfirm", { name: u.displayName }),
+      message: u._count.ownedBoards ? t("admin.deleteUserBoards", { count: u._count.ownedBoards }) : undefined,
+      danger: true,
+      confirm: t("admin.delete"),
+    });
+    if (!ok) return;
+    try {
+      await apiDelete(`/api/admin/users/${u.id}`);
+      onRemoved(u.id);
+    } catch (e) {
+      toast.error(e);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <label className="relative block max-w-xs">
+        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} className="input pl-9" placeholder={t("admin.searchUsers")} aria-label={t("admin.searchUsers")} />
+      </label>
+      <div className="panel overflow-hidden">
+        <ul className="divide-y divide-line">
+          {shown.map((u) => {
+            const self = u.id === currentUserId;
+            return (
+              <li key={u.id} className={cn("flex items-center gap-3 px-4 py-3", !u.active && "opacity-60")}>
+                <Avatar name={u.displayName} url={u.avatarUrl} size={34} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-fg">
+                    {u.displayName} {self && <span className="font-normal text-muted">{t("admin.you")}</span>}
+                  </p>
+                  <p className="truncate text-xs text-muted">{u.email}</p>
+                </div>
+                <div className="hidden text-right text-xs text-muted md:block">
+                  <p>{t("admin.boardsCount", { count: u._count.ownedBoards })}</p>
+                  <p className="text-faint">
+                    <TimeAgo date={u.createdAt} prefix={(when) => t("admin.joined", { when })} />
+                  </p>
+                </div>
+                <span className={cn("badge hidden sm:inline-flex", u.globalRole === "ADMIN" ? "bg-accent-soft text-accent-fg" : "bg-sunken text-muted")}>
+                  {u.globalRole === "ADMIN" ? t("admin.adminRole") : t("admin.userRole")}
+                </span>
+                <span className={cn("badge", u.active ? "bg-sunken text-muted" : "bg-danger-soft text-danger")}>
+                  {u.active ? t("admin.active") : t("admin.inactive")}
+                </span>
+                <Menu
+                  label={t("admin.userActions", { name: u.displayName })}
+                  trigger={(p) => (
+                    <button type="button" {...p} className="icon-btn" aria-label={t("admin.userActions", { name: u.displayName })}>
+                      <MoreHorizontal size={16} />
+                    </button>
+                  )}
+                >
+                  {(close) => (
+                    <>
+                      <MenuItem
+                        icon={u.globalRole === "ADMIN" ? <ShieldOff size={15} /> : <Shield size={15} />}
+                        disabled={self}
+                        onClick={() => {
+                          close();
+                          update(u, { globalRole: u.globalRole === "ADMIN" ? "USER" : "ADMIN" });
+                        }}
+                      >
+                        {u.globalRole === "ADMIN" ? t("admin.removeAdmin") : t("admin.makeAdmin")}
+                      </MenuItem>
+                      <MenuItem icon={<KeyRound size={15} />} onClick={() => { close(); setResetFor(u); }}>
+                        {t("admin.resetPassword")}
+                      </MenuItem>
+                      <MenuItem
+                        icon={<Power size={15} />}
+                        disabled={self}
+                        onClick={() => {
+                          close();
+                          update(u, { active: !u.active });
+                        }}
+                      >
+                        {u.active ? t("admin.deactivate") : t("admin.activate")}
+                      </MenuItem>
+                      <MenuSeparator />
+                      <MenuItem danger icon={<Trash2 size={15} />} disabled={self} onClick={() => { close(); remove(u); }}>
+                        {t("admin.delete")}
+                      </MenuItem>
+                    </>
+                  )}
+                </Menu>
+              </li>
+            );
+          })}
+          {shown.length === 0 && <li className="px-4 py-6 text-center text-sm text-muted">{t("board.noUsersFound")}</li>}
+        </ul>
+      </div>
+      <ResetPasswordModal user={resetFor} onClose={() => setResetFor(null)} />
+    </div>
+  );
+}
+
+function BoardsTable({ boards }: { boards: AdminBoard[] }) {
+  const { t } = useI18n();
+  if (boards.length === 0) return <p className="panel p-6 text-center text-sm text-muted">{t("admin.noBoards")}</p>;
+  return (
+    <div className="panel overflow-x-auto">
+      <table className="w-full min-w-[640px] text-left text-sm">
+        <thead className="border-b border-line text-xs text-muted">
+          <tr>
+            <th className="px-4 py-2.5 font-medium">{t("boards.newModal.name")}</th>
+            <th className="px-4 py-2.5 font-medium">{t("boards.owner")}</th>
+            <th className="px-4 py-2.5 font-medium">{t("boards.newModal.type")}</th>
+            <th className="px-4 py-2.5 text-right font-medium">{t("admin.cards")}</th>
+            <th className="px-4 py-2.5 text-right font-medium">{t("board.members")}</th>
+            <th className="px-4 py-2.5 font-medium">{t("admin.updated")}</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {boards.map((b) => (
+            <tr key={b.id} className="hover:bg-hover">
+              <td className="px-4 py-2.5">
+                <Link href={`/boards/${b.id}`} className="font-medium text-fg hover:underline" title={t("admin.viewReadOnly")}>
+                  {b.name}
+                </Link>
+              </td>
+              <td className="px-4 py-2.5 text-muted">{b.owner.displayName}</td>
+              <td className="px-4 py-2.5">
+                <span className={cn("badge", b.type === "TEAM" ? "bg-accent-soft text-accent-fg" : "bg-sunken text-muted")}>
+                  {b.type === "TEAM" ? t("boards.team") : t("boards.personal")}
+                </span>
+              </td>
+              <td className="px-4 py-2.5 text-right tabular-nums text-muted">{b._count.cards}</td>
+              <td className="px-4 py-2.5 text-right tabular-nums text-muted">{b._count.members}</td>
+              <td className="px-4 py-2.5 text-muted">
+                <TimeAgo date={b.updatedAt} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ResetPasswordModal({ user, onClose }: { user: AdminUser | null; onClose: () => void }) {
+  const { t } = useI18n();
+  const toast = useToast();
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user) return;
+    setBusy(true);
+    try {
+      await apiPatch("/api/admin/users", { userId: user.id, password });
+      toast.success(t("admin.passwordReset", { name: user.displayName }));
+      setPassword("");
+      onClose();
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal open={!!user} onClose={onClose} title={t("admin.resetPasswordFor", { name: user?.displayName ?? "" })} size="sm">
+      <form onSubmit={submit} className="space-y-4">
+        <div>
+          <label className="label" htmlFor="reset-password">
+            {t("admin.temporaryPassword")}
+          </label>
+          <input id="reset-password" data-autofocus type="text" minLength={8} required className="input font-mono" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="off" />
+          <p className="hint">{t("admin.createModal.mustChange")}</p>
+        </div>
+        <div className="flex justify-end gap-2">
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            {t("common.cancel")}
+          </button>
+          <button type="submit" className="btn-primary" disabled={busy || password.length < 8}>
+            {t("admin.resetPassword")}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function CreateUserModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (u: AdminUser) => void }) {
+  const { t } = useI18n();
+  const [displayName, setDisplayName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const { user } = await apiPost<{ user: AdminUser }>("/api/admin/users", {
+        email,
+        displayName,
+        password,
+        globalRole: isAdmin ? "ADMIN" : "USER",
+      });
+      onCreated(user);
+      setDisplayName("");
+      setEmail("");
+      setPassword("");
+      setIsAdmin(false);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? translateApiError(err.message, t) : t("admin.createError"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title={t("admin.createModal.title")} size="sm">
+      <form onSubmit={submit} className="space-y-4">
+        <div>
+          <label className="label" htmlFor="cu-name">
+            {t("admin.createModal.displayName")}
+          </label>
+          <input id="cu-name" data-autofocus required maxLength={80} className="input" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder={t("admin.createModal.displayNamePlaceholder")} />
+        </div>
+        <div>
+          <label className="label" htmlFor="cu-email">
+            {t("admin.createModal.email")}
+          </label>
+          <input id="cu-email" type="email" required className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("admin.createModal.emailPlaceholder")} />
+        </div>
+        <div>
+          <label className="label" htmlFor="cu-password">
+            {t("admin.createModal.password")}
+          </label>
+          <input id="cu-password" type="text" required minLength={8} className="input font-mono" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="off" />
+          <p className="hint">{t("admin.createModal.mustChange")}</p>
+        </div>
+        <label className="flex items-center gap-2 text-sm text-fg">
+          <input type="checkbox" checked={isAdmin} onChange={(e) => setIsAdmin(e.target.checked)} className="h-4 w-4 accent-[rgb(var(--accent))]" />
+          {t("admin.createModal.isAdmin")}
+        </label>
+        {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            {t("admin.createModal.cancel")}
+          </button>
+          <button type="submit" disabled={loading} className="btn-primary">
+            {loading ? t("admin.createModal.submitting") : t("admin.createModal.submit")}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 function KosmyBoardSettingsCard({ initial }: { initial: KosmyAdminSettings }) {
   const { t } = useI18n();
+  const confirm = useConfirm();
   const [issuer, setIssuer] = useState(initial.issuer);
   const [clientId, setClientId] = useState(initial.clientId);
   const [clientSecret, setClientSecret] = useState("");
@@ -199,9 +487,9 @@ function KosmyBoardSettingsCard({ initial }: { initial: KosmyAdminSettings }) {
   }
 
   async function disable() {
-    if (!confirm(t("admin.kosmy.disableConfirm"))) return;
-    const res = await fetch("/api/admin/kosmy-board", { method: "DELETE" });
-    if (res.ok) {
+    if (!(await confirm({ title: t("admin.kosmy.disableConfirm"), danger: true, confirm: t("admin.kosmy.disable") }))) return;
+    const res = await fetch("/api/admin/kosmy-board", { method: "DELETE" }).catch(() => null);
+    if (res?.ok) {
       setIsOn(false);
       setHasSecret(false);
       setClientSecret("");
@@ -209,35 +497,32 @@ function KosmyBoardSettingsCard({ initial }: { initial: KosmyAdminSettings }) {
     }
   }
 
-  const labelClass = "mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant";
-
   return (
-    <section className="glass-elevated overflow-hidden rounded-xl">
-      <div className="flex items-center justify-between border-b border-primary/10 bg-primary/5 px-6 py-4">
-        <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-primary glow-text">{t("admin.kosmy.title")}</h2>
-        <span
-          className={cn(
-            "rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase",
-            isOn ? "border-primary/20 bg-primary/10 text-primary" : "border-on-surface-variant/20 bg-surface-container text-on-surface-variant",
-          )}
-        >
-          {isOn ? t("admin.kosmy.on") : t("admin.kosmy.off")}
-        </span>
+    <section className="panel overflow-hidden">
+      <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
+        <h3 className="text-[15px] font-semibold text-fg">{t("admin.kosmy.title")}</h3>
+        <span className={cn("badge", isOn ? "bg-accent-soft text-accent-fg" : "bg-sunken text-muted")}>{isOn ? t("admin.kosmy.on") : t("admin.kosmy.off")}</span>
       </div>
 
-      <div className="grid gap-8 p-6 lg:grid-cols-2">
+      <div className="grid gap-8 p-5 lg:grid-cols-2">
         <form onSubmit={save} className="space-y-4">
-          <p className="text-sm text-on-surface-variant">{t("admin.kosmy.desc")}</p>
+          <p className="text-sm text-muted">{t("admin.kosmy.desc")}</p>
           <div>
-            <label className={labelClass} htmlFor="kosmy-issuer">{t("admin.kosmy.issuer")}</label>
+            <label className="label" htmlFor="kosmy-issuer">
+              {t("admin.kosmy.issuer")}
+            </label>
             <input id="kosmy-issuer" className="input font-mono" value={issuer} onChange={(e) => setIssuer(e.target.value)} placeholder="https://board.example.com/oidc" required />
           </div>
           <div>
-            <label className={labelClass} htmlFor="kosmy-client-id">{t("admin.kosmy.clientId")}</label>
+            <label className="label" htmlFor="kosmy-client-id">
+              {t("admin.kosmy.clientId")}
+            </label>
             <input id="kosmy-client-id" className="input font-mono" value={clientId} onChange={(e) => setClientId(e.target.value)} required autoComplete="off" />
           </div>
           <div>
-            <label className={labelClass} htmlFor="kosmy-client-secret">{t("admin.kosmy.clientSecret")}</label>
+            <label className="label" htmlFor="kosmy-client-secret">
+              {t("admin.kosmy.clientSecret")}
+            </label>
             <input
               id="kosmy-client-secret"
               type="password"
@@ -249,20 +534,15 @@ function KosmyBoardSettingsCard({ initial }: { initial: KosmyAdminSettings }) {
               autoComplete="new-password"
             />
           </div>
-          <label className="flex items-start gap-2 text-sm text-on-surface">
-            <input
-              type="checkbox"
-              checked={autoCreate}
-              onChange={(e) => setAutoCreate(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-primary/30 bg-surface-container accent-primary"
-            />
+          <label className="flex items-start gap-2 text-sm text-fg">
+            <input type="checkbox" checked={autoCreate} onChange={(e) => setAutoCreate(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[rgb(var(--accent))]" />
             <span>
               {t("admin.kosmy.autoCreate")}
-              <span className="mt-0.5 block text-xs text-on-surface-variant">{t("admin.kosmy.autoCreateHint")}</span>
+              <span className="mt-0.5 block text-xs text-muted">{t("admin.kosmy.autoCreateHint")}</span>
             </span>
           </label>
 
-          {msg && <p className={cn("text-sm", msg.ok ? "text-primary" : "text-error")}>{msg.text}</p>}
+          {msg && <p className={cn("text-sm", msg.ok ? "text-accent-fg" : "text-danger")}>{msg.text}</p>}
 
           <div className="flex gap-2">
             <button type="submit" disabled={saving} className="btn-primary">
@@ -277,10 +557,10 @@ function KosmyBoardSettingsCard({ initial }: { initial: KosmyAdminSettings }) {
         </form>
 
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-on-surface">{t("admin.kosmy.urls")}</h3>
+          <h4 className="text-sm font-semibold text-fg">{t("admin.kosmy.urls")}</h4>
           <CopyField label={t("admin.kosmy.redirectUri")} value={initial.redirectUri} />
           <CopyField label={t("admin.kosmy.loginUri")} value={initial.loginUri} />
-          <p className="text-xs text-on-surface-variant">{t("admin.kosmy.urlsHint", { base: initial.base })}</p>
+          <p className="text-xs text-muted">{t("admin.kosmy.urlsHint", { base: initial.base })}</p>
         </div>
       </div>
     </section>
@@ -292,214 +572,23 @@ function CopyField({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div>
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-on-surface-variant">{label}</p>
+      <p className="mb-1 text-xs font-medium text-muted">{label}</p>
       <div className="flex items-center gap-2">
-        <code className="flex-1 break-all rounded-lg border border-primary/10 bg-background/60 px-3 py-2 text-xs text-on-surface">{value}</code>
+        <code className="flex-1 break-all rounded-lg border border-line bg-sunken px-3 py-2 font-mono text-xs text-fg">{value}</code>
         <button
           type="button"
-          className="btn-ghost shrink-0 text-xs"
+          className="icon-btn"
+          aria-label={t("profile.copy")}
           onClick={() => {
-            navigator.clipboard?.writeText(value);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
+            navigator.clipboard?.writeText(value).then(() => {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            });
           }}
         >
-          {copied ? <Icon name="check" size={14} /> : t("profile.copy")}
+          {copied ? <Check size={15} /> : <Copy size={15} />}
         </button>
       </div>
     </div>
-  );
-}
-
-function StatCard({ label, value, icon }: { label: string; value: number; icon: string }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="glass-panel relative overflow-hidden rounded-xl p-5"
-    >
-      <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/5 blur-[30px]"></div>
-      <div className="relative z-10 mb-4 flex h-10 w-10 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
-        <Icon name={icon} size={20} />
-      </div>
-      <p className="relative z-10 text-3xl font-bold tabular-nums text-primary glow-text">{value}</p>
-      <p className="relative z-10 mt-1 text-sm font-medium text-on-surface-variant">{label}</p>
-    </motion.div>
-  );
-}
-
-function UserRow({ user, isSelf, onRemoved }: { user: AdminUser; isSelf: boolean; onRemoved: () => void }) {
-  const { t } = useI18n();
-  const [active, setActive] = useState(user.active);
-
-  async function toggle() {
-    const res = await fetch("/api/admin/users", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.id, active: !active }),
-    });
-    if (res.ok) setActive(!active);
-  }
-
-  async function remove() {
-    if (!confirm(t("admin.deleteUserConfirm", { name: user.displayName }))) return;
-    await fetch(`/api/admin/users/${user.id}`, { method: "DELETE" });
-    onRemoved();
-  }
-
-  return (
-    <li className="group flex flex-col gap-4 px-4 py-4 transition-colors hover:bg-primary/5 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-3">
-        <Avatar name={user.displayName} url={user.avatarUrl} size={40} />
-        <div>
-          <p className={cn("text-sm font-semibold", isSelf ? "text-primary glow-text" : "text-on-surface")}>
-            {user.displayName}
-            {isSelf && <span className="ml-2 text-xs text-on-surface-variant">{t("admin.you")}</span>}
-          </p>
-          <p className="text-xs text-on-surface-variant">
-            {user.email} · {user.globalRole === "ADMIN" ? t("admin.adminRole") : t("admin.userRole")} · {t("admin.boardsCount", { count: user._count.ownedBoards })}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-4">
-        <span
-          className={cn(
-            "rounded-full border px-2.5 py-1 text-xs font-medium",
-            active
-              ? "border-primary/20 bg-primary/10 text-primary"
-              : "border-on-surface-variant/20 bg-surface-container text-on-surface-variant",
-          )}
-        >
-          {active ? t("admin.active") : t("admin.inactive")}
-        </span>
-
-        {!isSelf ? (
-          <div className="flex items-center gap-1 opacity-50 transition-opacity group-hover:opacity-100">
-            <button
-              onClick={toggle}
-              className="rounded-md p-1.5 text-on-surface-variant transition-colors hover:bg-primary/10 hover:text-primary"
-              title={active ? t("admin.deactivate") : t("admin.activate")}
-            >
-              <Icon name={active ? "toggle_on" : "toggle_on"} size={18} />
-            </button>
-            <button
-              onClick={remove}
-              className="rounded-md p-1.5 text-on-surface-variant transition-colors hover:bg-error/10 hover:text-error"
-              title={t("admin.delete")}
-            >
-              <Icon name="delete" size={18} />
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1 opacity-60">
-            <Icon name="verified_user" size={18} className="text-primary/50" />
-          </div>
-        )}
-      </div>
-    </li>
-  );
-}
-
-function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreated: (u: AdminUser) => void }) {
-  const { t } = useI18n();
-  const [email, setEmail] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [password, setPassword] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  async function submit() {
-    setError("");
-    if (!email.trim() || !displayName.trim() || !password) {
-      setError(t("admin.allFieldsRequired"));
-      return;
-    }
-    if (password.length < 6) {
-      setError(t("api.adminPasswordTooShort"));
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          displayName: displayName.trim(),
-          password,
-          globalRole: isAdmin ? "ADMIN" : "USER",
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || t("admin.createError"));
-        return;
-      }
-      onCreated(data.user);
-    } catch {
-      setError(t("api.networkError"));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm md:items-center md:p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ y: 40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 40, opacity: 0 }}
-        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        onClick={(e) => e.stopPropagation()}
-        className="glass-elevated w-full max-w-md space-y-4 rounded-t-2xl p-5 md:rounded-2xl"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-on-surface">{t("admin.createModal.title")}</h2>
-          <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">
-            <Icon name="close" size={20} />
-          </button>
-        </div>
-
-        {error && <p className="rounded-lg border border-error/20 bg-error/10 px-3 py-2 text-sm text-error">{error}</p>}
-
-        <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">{t("admin.createModal.displayName")}</label>
-          <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="input" placeholder={t("admin.createModal.displayNamePlaceholder")} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">{t("admin.createModal.email")}</label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="input" placeholder={t("admin.createModal.emailPlaceholder")} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-on-surface-variant">{t("admin.createModal.password")}</label>
-          <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="input" placeholder={t("admin.createModal.passwordPlaceholder")} />
-          <p className="mt-1 text-xs text-on-surface-variant">{t("admin.createModal.mustChange")}</p>
-        </div>
-        <label className="flex items-center gap-2 text-sm text-on-surface">
-          <input
-            type="checkbox"
-            checked={isAdmin}
-            onChange={(e) => setIsAdmin(e.target.checked)}
-            className="h-4 w-4 rounded border-primary/30 bg-surface-container accent-primary"
-          />
-          {t("admin.createModal.isAdmin")}
-        </label>
-
-        <div className="flex gap-2">
-          <button onClick={submit} disabled={loading} className="btn-primary flex-1">
-            {loading ? t("admin.createModal.submitting") : t("admin.createModal.submit")}
-          </button>
-          <button onClick={onClose} className="btn-ghost">{t("admin.createModal.cancel")}</button>
-        </div>
-      </motion.div>
-    </motion.div>
   );
 }

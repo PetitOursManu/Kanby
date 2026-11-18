@@ -37,13 +37,13 @@ export function useChangeLocale() {
   const change = useCallback(async (locale: Locale) => {
     setChanging(true);
     try {
-      await fetch("/api/me/language", {
+      const res = await fetch("/api/me/language", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ locale }),
       });
       // Reload to pick up the new cookie server-side.
-      window.location.reload();
+      if (res.ok) window.location.reload();
     } finally {
       setChanging(false);
     }

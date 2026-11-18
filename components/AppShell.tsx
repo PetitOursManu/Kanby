@@ -1,49 +1,49 @@
 import { getSessionUser } from "@/lib/auth/session";
 import { getServerLocale } from "@/lib/i18n/server";
-import { getServerTranslator } from "@/lib/i18n/server";
 import { I18nProvider } from "@/lib/i18n/client";
-import { Sidebar } from "@/components/Sidebar";
-import { TopBar } from "@/components/TopBar";
-import { cn } from "@/lib/utils";
+import { prisma } from "@/lib/prisma";
+import { ShellFrame, type NavKey } from "@/components/ShellFrame";
 
+/**
+ * Authenticated app layout: sidebar (desktop) / drawer (mobile) + top bar.
+ * `title` is the page heading shown in the top bar, `crumbs` the breadcrumb
+ * before it. `wide` removes the max width and padding (board page).
+ */
 export async function AppShell({
   children,
   active,
   wide,
+  title,
+  crumbs,
 }: {
   children: React.ReactNode;
-  active?: "boards" | "profile" | "admin";
+  active?: NavKey;
   wide?: boolean;
+  title?: string;
+  crumbs?: { href: string; label: string }[];
 }) {
   const user = await getSessionUser();
   if (!user) return null;
 
-  const locale = getServerLocale();
-  const t = getServerTranslator();
-
-  const links = [
-    { href: "/boards", label: t("nav.boards"), key: "boards", icon: "dashboard" },
-    { href: "/profile", label: t("nav.profile"), key: "profile", icon: "settings" },
-    ...(user.globalRole === "ADMIN"
-      ? [{ href: "/admin", label: t("nav.admin"), key: "admin", icon: "workspaces" }]
-      : []),
-  ];
+  const recent = await prisma.board.findMany({
+    where: { OR: [{ ownerId: user.id }, { members: { some: { userId: user.id } } }] },
+    orderBy: { updatedAt: "desc" },
+    take: 5,
+    select: { id: true, name: true, type: true },
+  });
 
   return (
-    <I18nProvider locale={locale}>
-      <div className="min-h-dvh bg-background">
-        <Sidebar user={user} links={links} active={active} />
-        <TopBar user={user} links={links} active={active} />
-
-        <main
-          className={cn(
-            "mt-16 min-h-[calc(100dvh-4rem)] md:ml-64",
-            wide ? "w-full" : "mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8",
-          )}
-        >
-          {children}
-        </main>
-      </div>
+    <I18nProvider locale={getServerLocale()}>
+      <ShellFrame
+        user={{ displayName: user.displayName, avatarUrl: user.avatarUrl, isAdmin: user.globalRole === "ADMIN" }}
+        recent={recent}
+        active={active}
+        wide={wide}
+        title={title}
+        crumbs={crumbs}
+      >
+        {children}
+      </ShellFrame>
     </I18nProvider>
   );
 }

@@ -4,10 +4,14 @@ import { hashPassword, isPasswordValid } from "@/lib/auth/passwords";
 import { issueSession } from "@/lib/auth/session";
 import { rateLimitOr429 } from "@/lib/rate-limit";
 import { EMAIL_RE, LIMITS } from "@/lib/validation";
+import { registrationAllowed } from "@/lib/registration";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+  if (!registrationAllowed()) {
+    return NextResponse.json({ error: "Les inscriptions sont fermées sur cette instance" }, { status: 403 });
+  }
   const limited = rateLimitOr429(req, "register", 5, 60);
   if (limited) return limited;
 

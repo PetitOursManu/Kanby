@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { getSessionUser } from "@/lib/auth/session";
+import { requirePageUser } from "@/lib/auth/page";
 import { AppShell } from "@/components/AppShell";
 import { Icon } from "@/components/Icon";
 import { getServerTranslator } from "@/lib/i18n/server";
@@ -22,12 +21,12 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="card-surface rounded-xl p-6">
-      <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold text-on-surface">
-        <Icon name={icon} size={22} className="text-primary" />
+    <section className="panel p-6">
+      <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold text-fg">
+        <Icon name={icon} size={22} className="text-accent-fg" />
         {title}
       </h2>
-      <div className="space-y-3 text-sm leading-relaxed text-on-surface-variant">
+      <div className="space-y-3 text-sm leading-relaxed text-muted">
         {children}
       </div>
     </section>
@@ -37,11 +36,11 @@ function Section({
 function Step({ number, title, children }: { number: number; title: string; children: React.ReactNode }) {
   return (
     <div className="flex gap-4">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent-fg">
         {number}
       </span>
       <div>
-        <h3 className="font-medium text-on-surface">{title}</h3>
+        <h3 className="font-medium text-fg">{title}</h3>
         <p className="mt-1">{children}</p>
       </div>
     </div>
@@ -49,16 +48,15 @@ function Step({ number, title, children }: { number: number; title: string; chil
 }
 
 export default async function HelpPage() {
-  const user = await getSessionUser();
-  if (!user) redirect("/login");
+  await requirePageUser({ path: "/help" });
   const t = getServerTranslator();
 
   return (
-    <AppShell active="boards">
+    <AppShell active="help" title={t("nav.help")}>
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="mb-6">
-          <h1 className="font-headline text-2xl font-semibold text-on-surface">{t("help.h1")}</h1>
-          <p className="mt-1 text-sm text-on-surface-variant">
+          <h1 className="text-2xl font-semibold text-fg">{t("help.h1")}</h1>
+          <p className="mt-1 text-sm text-muted">
             {t("help.intro")}
           </p>
         </div>
@@ -157,7 +155,7 @@ export default async function HelpPage() {
               {t("help.adminCan5")}
             </li>
           </ul>
-          <p className="mt-3 rounded-lg border border-tertiary/20 bg-tertiary/10 p-3 text-tertiary">
+          <p className="mt-3 rounded-lg border border-warn/30 bg-warn-soft p-3 text-warn">
             <strong>{t("help.defaultAdmin")}</strong> {t("help.defaultAdminBody")}
           </p>
         </Section>
@@ -169,7 +167,7 @@ export default async function HelpPage() {
               href="https://dashy.to/"
               target="_blank"
               rel="noreferrer"
-              className="text-primary hover:underline"
+              className="text-accent-fg hover:underline"
             >
               Dashy
             </a>{" "}

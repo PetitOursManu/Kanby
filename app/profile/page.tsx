@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { getServerTranslator } from "@/lib/i18n/server";
 import { ProfileForm } from "./ProfileForm";
 import { requirePageUser } from "@/lib/auth/page";
 import { isKosmyEnabled } from "@/lib/kosmy-board/server";
@@ -12,7 +13,7 @@ export default async function ProfilePage({
   const kosmyEnabled = await isKosmyEnabled();
 
   return (
-    <AppShell active="profile">
+    <AppShell active="profile" title={getServerTranslator()("profile.title")}>
       <ProfileForm
         user={{
           id: user.id,

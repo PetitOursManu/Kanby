@@ -1,42 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBoardMember } from "@/lib/auth-guard";
+import { CARD_LIST_INCLUDE } from "@/lib/board-queries";
+import { LIMITS, badRequest, notFound, readJson, text } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  let body: { columnId?: string; title?: string };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Requête invalide" }, { status: 400 });
-  }
-  const columnId = body.columnId;
-  const title = body.title?.trim();
-  if (!columnId || !title) {
-    return NextResponse.json({ error: "columnId et title requis" }, { status: 400 });
+  const body = await readJson<{ columnId: string; title: string }>(req);
+  if (!body) return badRequest("Requête invalide");
+  const title = text(body.title, LIMITS.cardTitle, { required: true });
+  if (typeof body.columnId !== "string" || title.error) {
+    return badRequest(title.error === "too_long" ? "Titre trop long" : "columnId et title requis");
   }
 
-  const column = await prisma.column.findUnique({ where: { id: columnId } });
-  if (!column) return NextResponse.json({ error: "Colonne introuvable" }, { status: 404 });
+  const column = await prisma.column.findUnique({ where: { id: body.columnId } });
+  if (!column) return notFound("Colonne introuvable");
 
   const auth = await requireBoardMember(req, column.boardId);
   if ("error" in auth) return auth.error;
 
-  const maxOrder = await prisma.card.aggregate({
-    where: { columnId },
-    _max: { order: true },
-  });
+  const maxOrder = await prisma.card.aggregate({ where: { columnId: column.id }, _max: { order: true } });
   const order = (maxOrder._max.order ?? -1) + 1;
 
   const card = await prisma.card.create({
-    data: { columnId, boardId: column.boardId, title, order },
-    include: {
-      labels: { include: { label: true } },
-      assignee: { select: { id: true, displayName: true, avatarUrl: true } },
-      checklist: { select: { done: true } },
-      _count: { select: { checklist: true, comments: true } },
+    data: {
+      columnId: column.id,
+      boardId: column.boardId,
+      title: title.value!,
+      order,
+      completedAt: column.kind === "DONE" ? new Date() : null,
     },
+    include: CARD_LIST_INCLUDE,
   });
+  await prisma.board.update({ where: { id: column.boardId }, data: { updatedAt: new Date() } });
   return NextResponse.json({ card }, { status: 201 });
 }

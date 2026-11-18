@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getSessionUser } from "@/lib/auth/session";
+import { requirePageUser } from "@/lib/auth/page";
 import { getFullBoardForUser } from "@/lib/board-queries";
 import { BoardView } from "@/components/BoardView";
 import { AppShell } from "@/components/AppShell";
@@ -8,8 +7,7 @@ import { Icon } from "@/components/Icon";
 import { getServerTranslator } from "@/lib/i18n/server";
 
 export default async function BoardPage({ params }: { params: { id: string } }) {
-  const user = await getSessionUser();
-  if (!user) redirect("/login");
+  const user = await requirePageUser({ path: `/boards/${params.id}` });
   const t = getServerTranslator();
 
   const result = await getFullBoardForUser(params.id, user.id);

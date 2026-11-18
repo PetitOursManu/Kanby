@@ -1,72 +1,83 @@
 import { prisma } from "@/lib/prisma";
-import { getTranslator, parseLocale, LOCALE_COOKIE } from "@/lib/i18n";
+import { getTranslator, parseLocale, LOCALE_COOKIE, type Locale } from "@/lib/i18n";
 import type { NextRequest } from "next/server";
 
 /**
- * Create notifications for all members of a team board (except the actor)
- * when a board-level event happens.
- *
- * The message is localized for each recipient using their cookie locale —
- * since we don't store a per-user locale, we fall back to the actor's locale
- * (the request cookie). In practice all members share the same instance
- * locale most of the time.
+ * Notifications are written in each recipient's own language (User.locale,
+ * saved when they pick a language). Users who never picked one get the
+ * actor's language. Notifications are best-effort: a failure here never
+ * breaks the action that triggered it.
  */
+type Vars = Record<string, string>;
+
+async function buildMessages(opts: {
+  req?: NextRequest;
+  recipients: { id: string; locale: string | null }[];
+  actorId: string;
+  boardId?: string;
+  messageKey: string;
+  vars?: Vars;
+}) {
+  const fallback = parseLocale(opts.req?.cookies?.get(LOCALE_COOKIE)?.value);
+  const [actor, board] = await Promise.all([
+    prisma.user.findUnique({ where: { id: opts.actorId }, select: { displayName: true } }),
+    opts.boardId ? prisma.board.findUnique({ where: { id: opts.boardId }, select: { name: true } }) : null,
+  ]);
+  const cache = new Map<Locale, string>();
+  return opts.recipients.map((r) => {
+    const locale = r.locale ? parseLocale(r.locale) : fallback;
+    if (!cache.has(locale)) {
+      cache.set(
+        locale,
+        getTranslator(locale)(opts.messageKey, {
+          actor: actor?.displayName ?? "?",
+          board: board?.name ?? "",
+          card: opts.vars?.card ?? "",
+          ...opts.vars,
+        }),
+      );
+    }
+    return { userId: r.id, message: cache.get(locale)! };
+  });
+}
+
+/** Notify every member of a team board except the actor. */
 export async function notifyBoardMembers(opts: {
   req?: NextRequest;
   boardId: string;
   actorId: string;
   cardId?: string;
   kind: string;
-  /** Translation key for the message. Variables: {actor}, {board}, {card}. */
   messageKey: string;
-  vars?: Record<string, string>;
+  vars?: Vars;
 }): Promise<void> {
-  const { req, boardId, actorId, cardId, kind, messageKey, vars } = opts;
+  try {
+    const board = await prisma.board.findUnique({ where: { id: opts.boardId }, select: { type: true } });
+    if (!board || board.type !== "TEAM") return;
 
-  // Only team boards have members to notify.
-  const board = await prisma.board.findUnique({
-    where: { id: boardId },
-    select: { type: true, name: true, ownerId: true },
-  });
-  if (!board || board.type !== "TEAM") return;
+    const members = await prisma.boardMember.findMany({
+      where: { boardId: opts.boardId, userId: { not: opts.actorId }, user: { active: true } },
+      select: { user: { select: { id: true, locale: true } } },
+    });
+    if (members.length === 0) return;
 
-  const members = await prisma.boardMember.findMany({
-    where: { boardId },
-    select: { userId: true },
-  });
-
-  // Recipients: all members except the actor.
-  const recipients = members
-    .map((m) => m.userId)
-    .filter((uid) => uid !== actorId);
-  if (recipients.length === 0) return;
-
-  const actorLocale = parseLocale(req?.cookies?.get(LOCALE_COOKIE)?.value);
-  const t = getTranslator(actorLocale);
-  const actor = await prisma.user.findUnique({
-    where: { id: actorId },
-    select: { displayName: true },
-  });
-  const message = t(messageKey, {
-    actor: actor?.displayName ?? "?",
-    board: board.name,
-    card: vars?.card ?? "",
-    ...vars,
-  });
-
-  await prisma.notification.createMany({
-    data: recipients.map((userId) => ({
-      userId,
-      actorId,
-      boardId,
-      cardId: cardId ?? null,
-      kind,
-      message,
-    })),
-  });
+    const messages = await buildMessages({ ...opts, recipients: members.map((m) => m.user) });
+    await prisma.notification.createMany({
+      data: messages.map((m) => ({
+        userId: m.userId,
+        actorId: opts.actorId,
+        boardId: opts.boardId,
+        cardId: opts.cardId ?? null,
+        kind: opts.kind,
+        message: m.message,
+      })),
+    });
+  } catch (e) {
+    console.error("[notify] failed:", e);
+  }
 }
 
-/** Notify a single user (e.g. when assigned to a card). */
+/** Notify a single user (e.g. when assigned to a card or added to a board). */
 export async function notifyUser(opts: {
   req?: NextRequest;
   userId: string;
@@ -75,37 +86,24 @@ export async function notifyUser(opts: {
   cardId?: string;
   kind: string;
   messageKey: string;
-  vars?: Record<string, string>;
+  vars?: Vars;
 }): Promise<void> {
-  const { req, userId, actorId, boardId, cardId, kind, messageKey, vars } = opts;
-  if (userId === actorId) return;
-
-  const actorLocale = parseLocale(req?.cookies?.get(LOCALE_COOKIE)?.value);
-  const t = getTranslator(actorLocale);
-  const actor = await prisma.user.findUnique({
-    where: { id: actorId },
-    select: { displayName: true },
-  });
-  let boardName = "";
-  if (boardId) {
-    const b = await prisma.board.findUnique({ where: { id: boardId }, select: { name: true } });
-    boardName = b?.name ?? "";
+  if (opts.userId === opts.actorId) return;
+  try {
+    const user = await prisma.user.findUnique({ where: { id: opts.userId }, select: { id: true, locale: true } });
+    if (!user) return;
+    const [m] = await buildMessages({ ...opts, recipients: [user] });
+    await prisma.notification.create({
+      data: {
+        userId: opts.userId,
+        actorId: opts.actorId,
+        boardId: opts.boardId ?? null,
+        cardId: opts.cardId ?? null,
+        kind: opts.kind,
+        message: m.message,
+      },
+    });
+  } catch (e) {
+    console.error("[notify] failed:", e);
   }
-  const message = t(messageKey, {
-    actor: actor?.displayName ?? "?",
-    board: boardName,
-    card: vars?.card ?? "",
-    ...vars,
-  });
-
-  await prisma.notification.create({
-    data: {
-      userId,
-      actorId,
-      boardId: boardId ?? null,
-      cardId: cardId ?? null,
-      kind,
-      message,
-    },
-  });
 }

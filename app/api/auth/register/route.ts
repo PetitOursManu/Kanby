@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, isPasswordValid } from "@/lib/auth/passwords";
 import { issueSession } from "@/lib/auth/session";
 import { rateLimitOr429 } from "@/lib/rate-limit";
+import { EMAIL_RE, LIMITS } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
@@ -16,19 +17,25 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Requête invalide" }, { status: 400 });
   }
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "Requête invalide" }, { status: 400 });
+  }
 
-  const email = body.email?.trim().toLowerCase();
-  const password = body.password ?? "";
-  const displayName = body.displayName?.trim();
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  const password = typeof body.password === "string" ? body.password : "";
+  const displayName = typeof body.displayName === "string" ? body.displayName.trim() : "";
 
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!email || !EMAIL_RE.test(email) || email.length > LIMITS.email) {
     return NextResponse.json({ error: "Email invalide" }, { status: 400 });
   }
   if (!isPasswordValid(password)) {
     return NextResponse.json({ error: "Le mot de passe doit faire au moins 8 caractères" }, { status: 400 });
   }
-  if (!displayName || displayName.length < 1) {
+  if (!displayName) {
     return NextResponse.json({ error: "Le nom affiché est requis" }, { status: 400 });
+  }
+  if (displayName.length > LIMITS.displayName) {
+    return NextResponse.json({ error: "Nom trop long" }, { status: 400 });
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -42,14 +49,15 @@ export async function POST(req: NextRequest) {
   const userCount = await prisma.user.count();
   const role = promoteFirst && userCount === 0 ? "ADMIN" : "USER";
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      displayName,
-      passwordHash: await hashPassword(password),
-      globalRole: role,
-    },
-  });
+  let user;
+  try {
+    user = await prisma.user.create({
+      data: { email, displayName, passwordHash: await hashPassword(password), globalRole: role },
+    });
+  } catch {
+    // Unique constraint race: two sign-ups with the same email at once.
+    return NextResponse.json({ error: "Un compte existe déjà avec cet email" }, { status: 409 });
+  }
 
   await issueSession(user);
   return NextResponse.json({

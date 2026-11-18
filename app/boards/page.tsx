@@ -1,12 +1,10 @@
 import { AppShell } from "@/components/AppShell";
 import { BoardsList } from "./BoardsList";
-import { getSessionUser } from "@/lib/auth/session";
+import { requirePageUser } from "@/lib/auth/page";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 
 export default async function BoardsPage() {
-  const user = await getSessionUser();
-  if (!user) redirect("/login");
+  const user = await requirePageUser({ path: "/boards" });
 
   const [owned, memberOf] = await Promise.all([
     prisma.board.findMany({
@@ -15,7 +13,7 @@ export default async function BoardsPage() {
       include: { _count: { select: { cards: true } } },
     }),
     prisma.boardMember.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id, board: { ownerId: { not: user.id } } },
       include: { board: { include: { _count: { select: { cards: true } } } } },
       orderBy: { board: { updatedAt: "desc" } },
     }),

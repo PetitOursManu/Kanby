@@ -26,9 +26,12 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Requête invalide" }, { status: 400 });
   }
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "Requête invalide" }, { status: 400 });
+  }
 
-  const email = body.email?.trim().toLowerCase();
-  const password = body.password ?? "";
+  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  const password = typeof body.password === "string" ? body.password : "";
   if (!email || !password) {
     return NextResponse.json({ error: "Email et mot de passe requis" }, { status: 400 });
   }
@@ -42,7 +45,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
   }
 
-  const label = body.label?.trim() || "Mobile API";
+  const label = (typeof body.label === "string" ? body.label.trim().slice(0, 80) : "") || "Mobile API";
   const { raw } = await createApiToken(user.id, label);
 
   return NextResponse.json({

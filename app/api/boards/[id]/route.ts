@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBoardMember, requireBoardOwner } from "@/lib/auth-guard";
 import { FULL_BOARD_INCLUDE } from "@/lib/board-queries";
+import { LIMITS, badRequest, readJson, text } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const auth = await requireBoardMember(req, params.id);
+  const auth = await requireBoardMember(req, params.id, "read");
   if ("error" in auth) return auth.error;
   const board = await prisma.board.findUnique({
     where: { id: params.id },
@@ -20,30 +21,42 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const auth = await requireBoardOwner(req, params.id);
   if ("error" in auth) return auth.error;
 
-  let body: { name?: string; type?: "PERSONAL" | "TEAM" };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Requête invalide" }, { status: 400 });
-  }
+  const body = await readJson<{ name: string; type: "PERSONAL" | "TEAM" }>(req);
+  if (!body) return badRequest("Requête invalide");
 
   const data: { name?: string; type?: "PERSONAL" | "TEAM" } = {};
-  if (typeof body.name === "string" && body.name.trim()) data.name = body.name.trim();
-  if (body.type === "PERSONAL" || body.type === "TEAM") data.type = body.type;
-
-  // Promoting a personal board to team creates an owner membership if missing.
-  if (data.type === "TEAM") {
-    const existing = await prisma.boardMember.findUnique({
-      where: { boardId_userId: { boardId: params.id, userId: auth.board!.ownerId } },
-    });
-    if (!existing) {
-      await prisma.boardMember.create({
-        data: { boardId: params.id, userId: auth.board!.ownerId, role: "OWNER" },
-      });
-    }
+  const name = text(body.name, LIMITS.boardName);
+  if (name.error) return badRequest(name.error === "too_long" ? "Nom trop long" : "Nom requis");
+  if (name.value) data.name = name.value;
+  if (body.type !== undefined) {
+    if (body.type !== "PERSONAL" && body.type !== "TEAM") return badRequest("Type invalide");
+    data.type = body.type;
   }
 
-  const board = await prisma.board.update({ where: { id: params.id }, data });
+  const ownerId = auth.board.ownerId;
+  const board = await prisma.$transaction(async (tx) => {
+    if (data.type === "TEAM") {
+      // Promoting a personal board to team: the owner becomes its first member.
+      await tx.boardMember.upsert({
+        where: { boardId_userId: { boardId: params.id, userId: ownerId } },
+        update: { role: "OWNER" },
+        create: { boardId: params.id, userId: ownerId, role: "OWNER" },
+      });
+    } else if (data.type === "PERSONAL") {
+      // A personal board is private again: other members lose access and
+      // their assignments on the board are cleared.
+      const others = await tx.boardMember.findMany({
+        where: { boardId: params.id, userId: { not: ownerId } },
+        select: { userId: true },
+      });
+      const ids = others.map((o) => o.userId);
+      if (ids.length) {
+        await tx.card.updateMany({ where: { boardId: params.id, assigneeId: { in: ids } }, data: { assigneeId: null } });
+      }
+      await tx.boardMember.deleteMany({ where: { boardId: params.id } });
+    }
+    return tx.board.update({ where: { id: params.id }, data });
+  });
   return NextResponse.json({ board });
 }
 

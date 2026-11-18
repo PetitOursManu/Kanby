@@ -48,6 +48,8 @@ model User {
   /// Stable Kosmy Board account id (OpenID Connect `sub`) linked to this user.
   /// Accounts are only ever matched on this value, never on the (unverified) email.
   kosmySub         String?    @unique
+  /// Interface language ("fr" | "en"), used to localize notifications.
+  locale           String?
   createdAt        DateTime   @default(now())
 
   ownedBoards      Board[]        @relation("BoardOwner")

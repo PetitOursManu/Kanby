@@ -1,15 +1,12 @@
 import { AppShell } from "@/components/AppShell";
 import { AdminPanel } from "./AdminPanel";
-import { getSessionUser } from "@/lib/auth/session";
+import { requirePageUser } from "@/lib/auth/page";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { appBaseUrl, initiateLoginUri, redirectUri } from "@/lib/kosmy-board/oidc";
 
 export default async function AdminPage() {
-  const user = await getSessionUser();
-  if (!user) redirect("/login");
-  if (user.globalRole !== "ADMIN") redirect("/boards");
+  const user = await requirePageUser({ path: "/admin", admin: true });
 
   const [users, boards, stats, kosmyRow] = await Promise.all([
     prisma.user.findMany({

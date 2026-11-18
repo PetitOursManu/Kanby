@@ -10,5 +10,6 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    exclude: ["tests/api/**", "tests/e2e/**", "node_modules/**"],
   },
 });

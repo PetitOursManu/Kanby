@@ -1,5 +1,13 @@
 import { prisma } from "@/lib/prisma";
 
+/** What a card carries on the board (list view). */
+export const CARD_LIST_INCLUDE = {
+  labels: { include: { label: true } },
+  assignee: { select: { id: true, displayName: true, avatarUrl: true } },
+  checklist: { select: { done: true } },
+  _count: { select: { checklist: true, comments: true } },
+} as const;
+
 /** Full board payload with columns, cards, labels, members — for the board page. */
 export const FULL_BOARD_INCLUDE = {
   columns: {
@@ -7,17 +15,13 @@ export const FULL_BOARD_INCLUDE = {
     include: {
       cards: {
         orderBy: { order: "asc" as const },
-        include: {
-          labels: { include: { label: true } },
-          assignee: { select: { id: true, displayName: true, avatarUrl: true } },
-          checklist: { select: { done: true } },
-          _count: { select: { checklist: true, comments: true } },
-        },
+        include: CARD_LIST_INCLUDE,
       },
     },
   },
-  labels: true,
+  labels: { orderBy: { name: "asc" as const } },
   members: {
+    orderBy: { joinedAt: "asc" as const },
     include: {
       user: { select: { id: true, displayName: true, email: true, avatarUrl: true } },
     },

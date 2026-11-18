@@ -1,7 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import { ProfileForm } from "./ProfileForm";
-import { getSessionUser } from "@/lib/auth/session";
-import { redirect } from "next/navigation";
+import { requirePageUser } from "@/lib/auth/page";
 import { isKosmyEnabled } from "@/lib/kosmy-board/server";
 
 export default async function ProfilePage({
@@ -9,8 +8,7 @@ export default async function ProfilePage({
 }: {
   searchParams: { mustChange?: string; kosmy?: string; kosmy_error?: string };
 }) {
-  const user = await getSessionUser();
-  if (!user) redirect("/login");
+  const user = await requirePageUser({ path: "/profile", allowMustChange: true });
   const kosmyEnabled = await isKosmyEnabled();
 
   return (

@@ -18,7 +18,17 @@ fi
 # The database may still be starting (Coolify, first boot): retry migrations.
 echo "[entrypoint] Applying database migrations..."
 i=0
-until npx prisma migrate deploy; do
+until out=$(npx prisma migrate deploy 2>&1); do
+  echo "$out" | tail -n 4
+  case "$out" in
+    *P1000*|*"Authentication failed"*)
+      echo "[entrypoint] ERREUR : PostgreSQL refuse l'identifiant / le mot de passe." >&2
+      echo "[entrypoint] Cause habituelle : le volume de la base a été créé lors d'un déploiement" >&2
+      echo "[entrypoint] précédent avec d'autres identifiants (PostgreSQL ne les change pas ensuite)." >&2
+      echo "[entrypoint] Solution : supprimer le volume de la base puis redéployer (voir README, Dépannage)." >&2
+      exit 1
+      ;;
+  esac
   i=$((i + 1))
   if [ "$i" -ge 15 ]; then
     echo "[entrypoint] La base de données ne répond pas, abandon." >&2
@@ -27,6 +37,8 @@ until npx prisma migrate deploy; do
   echo "[entrypoint] Base de données indisponible, nouvel essai dans 4 s ($i/15)..."
   sleep 4
 done
+
+echo "$out"
 
 echo "[entrypoint] Seeding default admin (if configured)..."
 node prisma/seed.js || true

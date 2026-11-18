@@ -157,7 +157,9 @@ de Coolify, ou webhook).
 
 | Symptôme | Cause probable / solution |
 |---|---|
-| *No available server* ou 502 | Le conteneur `app` n'est pas encore *healthy* : regardez ses logs (base indisponible, build en cours…). |
+| *No available server* ou 502 | Le conteneur `app` n'est pas *healthy*. Ouvrez les **logs du service `app`** : la dernière ligne `[entrypoint] …` donne la cause. |
+| Logs : `PostgreSQL refuse l'identifiant / le mot de passe` | Le volume de la base vient d'un **déploiement précédent** (autres identifiants : PostgreSQL ne les change jamais après la création). Si ce volume ne contient rien d'important : **Stop**, onglet **Persistent Storage** → supprimez le volume de `db`, puis **Deploy**. |
+| « Le port 3000 est déjà utilisé » | Pas de conflit possible : ce fichier compose ne publie **aucun port** sur le serveur, chaque conteneur a son propre port 3000. Dans *Domains*, gardez `:3000` (ou aucun port) : ce nombre désigne le port **du conteneur**, pas celui du serveur. Mettre `:3006` envoie le trafic vers un port où Kanby n'écoute pas. |
 | Connexion impossible, retour à la page de login | L'adresse utilisée doit être celle du champ *Domains* **en https** (le cookie de session est « Secure »). Après un changement de domaine, faites **Redeploy**. |
 | `JWT_SECRET n'est pas défini` | La variable `SERVICE_PASSWORD_64_JWT` a été vidée : supprimez-la puis redéployez pour la régénérer. |
 | Mot de passe admin perdu | Si un autre admin existe : **Admin → … → Réinitialiser le mot de passe**. Sinon, changez `DEFAULT_ADMIN_EMAIL` (nouvel admin créé au prochain démarrage). |

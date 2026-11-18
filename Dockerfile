@@ -1,6 +1,4 @@
-# Kanby — multi-stage Dockerfile
-# Syntax: docker/dockerfile:1.7 for heredoc support
-# syntax=docker/dockerfile:1.7
+# Kanby — multi-stage Dockerfile (used by docker compose and by Coolify)
 
 # ---- 1. Dependencies ----
 FROM node:20-alpine AS deps
@@ -8,7 +6,7 @@ WORKDIR /app
 RUN apk add --no-cache openssl
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
-RUN npm install --no-audit --no-fund
+RUN npm ci --no-audit --no-fund
 
 # ---- 2. Build ----
 FROM node:20-alpine AS builder
@@ -47,6 +45,10 @@ RUN chmod +x ./entrypoint.sh && chown -R kanby:kanby /app
 USER kanby
 
 EXPOSE 3000
+
+# Docker / Coolify health check: the app and its database answer.
+HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
+  CMD wget -q -Y off -O /dev/null "http://127.0.0.1:${PORT:-3000}/api/health" || exit 1
 
 # The entrypoint applies migrations and seeds the default admin before
 # starting the server, so `docker compose up` self-initializes.

@@ -1,167 +1,260 @@
-# Kanby
+<p align="center">
+  <img src="public/kanby-logo.png" alt="" width="72" height="72" />
+</p>
 
-Un gestionnaire de tâches **Kanban** simple, vivant et **auto-hébergé**.
-Pensé pour être installé facilement sur votre propre serveur via Docker.
+<h1 align="center">Kanby</h1>
 
-Tableaux personnels et d'équipe, glisser-déposer fluide, animations soignées,
-mode sombre, thème clair, 100 % responsive — et une **API complète** pour un
-futur client mobile.
+<p align="center">
+  Un gestionnaire de tâches <strong>Kanban</strong> simple, moderne et <strong>auto-hébergé</strong>.<br />
+  Mode clair / sombre, glisser-déposer fluide, tableaux d'équipe, 100 % responsive.
+</p>
 
----
-
-## Aperçu
-
-- **Tableaux** personnels (privés) ou d'équipe (partagés avec invités par email)
-- **Colonnes** personnalisables : renommer, réordonner par glisser-déposer,
-  colorer, supprimer. Une colonne de type *Terminé* déclenche des confettis 🎉
-- **Cartes** : titre, description, date d'échéance, étiquettes colorées,
-  checklist avec barre de progression, assignation, commentaires
-- **Glisser-déposer** : à la souris et au toucher (appui long de 200 ms sur
-  mobile), avec effet d'inclinaison 3D pendant le déplacement
-- **Mobile** : swipe horizontal entre les colonnes, menus en bottom-sheet
-- **i18n** : interface disponible en Français et Anglais, sélecteur dans le profil
-- **Notifications** : cloche dans la TopBar avec compteur de notifications non lues
-- **Admin** : panneau d'administration (utilisateurs, tableaux, statistiques)
-- **API** : tous les endpoints accessibles par token `kbt_` pour un client
-  mobile ou un script externe — voir [`API.md`](./API.md)
-- **Widget Dashy** : résumé de tâches intégrable en iframe — voir
-  [`NOTES.md`](./NOTES.md)
+<p align="center">
+  <img src="docs/screenshots/board-light.png" alt="Un tableau Kanby en mode clair" width="49%" />
+  <img src="docs/screenshots/board-dark.png" alt="Le même tableau en mode sombre" width="49%" />
+</p>
 
 ---
 
-## Installation en 5 minutes
+## Sommaire
+
+- [Fonctionnalités](#fonctionnalités)
+- [Installer Kanby sur Coolify](#installer-kanby-sur-coolify) ⭐ recommandé
+- [Installer avec Docker Compose](#installer-avec-docker-compose)
+- [Mise à jour](#mise-à-jour) · [Sauvegarde](#sauvegarde)
+- [Variables d'environnement](#variables-denvironnement)
+- [Administration](#administration) · [Kosmy Board](#se-connecter-avec-kosmy-board-optionnel)
+- [API mobile & intégrations](#api-mobile--intégrations) · [Widget Dashy](#widget-dashy-optionnel)
+- [Tests](#tests) · [Développement](#développement-sans-docker) · [Stack](#stack-technique)
+
+---
+
+## Fonctionnalités
+
+- **Tableaux** personnels (privés) ou d'équipe (partagés avec d'autres comptes)
+- **Colonnes** : renommer, colorer, réordonner (glisser ou menu), choisir leur
+  type *À faire / En cours / Terminé*. Déposer une carte dans *Terminé* la coche
+  (et lance des confettis 🎉)
+- **Cartes** : titre, description, échéance (en retard / aujourd'hui mis en
+  évidence), étiquettes colorées, checklist avec progression, assignation,
+  commentaires. Lien direct vers une carte (`/boards/<id>?card=<id>`)
+- **Glisser-déposer** à la souris, au doigt (appui long) et au clavier
+  (Espace pour saisir, flèches, Espace pour déposer)
+- **Filtre** des cartes (touche `/`), filtre « Mes cartes »
+- **Notifications** dans la langue de chaque destinataire
+- **Thème** clair, sombre ou automatique (selon l'appareil)
+- **Français / anglais**, sélecteur sur la page de connexion et dans le profil
+- **Mobile** : colonnes en défilement horizontal, menu latéral, fenêtres en
+  bas d'écran
+- **Admin** : utilisateurs (rôles, mot de passe temporaire, désactivation,
+  suppression), tous les tableaux en lecture seule, statistiques
+- **API complète** par token `kbt_…` — voir [`API.md`](./API.md)
+
+<p align="center">
+  <img src="docs/screenshots/card.png" alt="Détail d'une carte" width="70%" />
+  <img src="docs/screenshots/mobile.png" alt="Kanby sur téléphone" width="22%" />
+</p>
+
+---
+
+## Installer Kanby sur Coolify
+
+[Coolify](https://coolify.io) est un panneau d'auto-hébergement (type Heroku /
+Netlify chez soi). Kanby fournit un fichier dédié,
+[`docker-compose.coolify.yml`](./docker-compose.coolify.yml), qui laisse
+Coolify **générer tous les secrets** (mot de passe de la base, secret des
+sessions, mot de passe admin) et **gérer le domaine + HTTPS** : vous n'avez
+presque rien à saisir.
 
 ### Prérequis
 
-- **Docker** et **Docker Compose** installés sur votre serveur.
-  - Sous Windows/Mac : installez [Docker Desktop](https://www.docker.com/products/docker-desktop).
-  - Sous Linux : voir la [doc Docker](https://docs.docker.com/engine/install/).
+- Un serveur avec Coolify v4 installé et un serveur « localhost » ou distant
+  connecté (*Servers*).
+- *(Optionnel)* Un nom de domaine, par exemple `kanby.mondomaine.fr`, avec un
+  enregistrement DNS **A** qui pointe vers l'IP du serveur Coolify. Sans
+  domaine, Coolify fournit une adresse de test automatiquement.
 
 ### Étapes
 
-1. **Récupérez les fichiers** de Kanby sur votre serveur :
+1. **Créer la ressource**
+   Dans Coolify : **Projects** → choisissez (ou créez) un projet →
+   environnement **production** → **+ New** → **Public Repository**.
+
+2. **Indiquer le dépôt**
+   - *Repository URL* : `https://github.com/PetitOursManu/Kanby`
+   - *Branch* : `main`
+   - *Build Pack* : **Docker Compose**
+   - *Docker Compose Location* : **`/docker-compose.coolify.yml`**
+
+   Puis **Continue**. Coolify lit le fichier et affiche deux services : `app`
+   (Kanby) et `db` (PostgreSQL).
+
+3. **Choisir le domaine**
+   Dans la configuration du service **app**, champ **Domains** : mettez votre
+   adresse **avec https**, par exemple `https://kanby.mondomaine.fr`.
+   Coolify s'occupe du certificat HTTPS (Let's Encrypt) et transmet le trafic
+   au port 3000 du conteneur. Si vous laissez la valeur proposée, Kanby sera
+   accessible sur l'adresse générée par Coolify.
+
+4. **Vérifier les variables** (onglet **Environment Variables**)
+   Les valeurs `SERVICE_…` sont **créées automatiquement** et conservées entre
+   les déploiements — ne les modifiez pas :
+
+   | Variable générée | Rôle |
+   |---|---|
+   | `SERVICE_URL_APP` | adresse publique de Kanby (sert à `APP_URL`) |
+   | `SERVICE_PASSWORD_64_JWT` | secret des sessions |
+   | `SERVICE_USER_POSTGRES` / `SERVICE_PASSWORD_POSTGRES` | accès à la base |
+   | `SERVICE_PASSWORD_ADMIN` | **mot de passe temporaire du compte admin** |
+
+   Variables que vous pouvez ajuster :
+
+   | Variable | Défaut | Conseil |
+   |---|---|---|
+   | `DEFAULT_ADMIN_EMAIL` | `admin@kanby.local` | mettez votre email **avant** le 1er déploiement |
+   | `ALLOW_REGISTRATION` | `true` | `false` pour qu'un inconnu ne puisse pas créer de compte sur votre instance publique |
+   | `DEFAULT_ADMIN_NAME` | `Administrateur` | |
+   | `JWT_EXPIRES_IN` | `2592000` (30 jours) | durée des sessions en secondes |
+
+5. **Déployer**
+   Cliquez sur **Deploy**. Le premier build prend quelques minutes. Dans les
+   logs du service `app`, vous devez voir :
+   ```
+   [entrypoint] Applying database migrations...
+   [seed] Admin par défaut créé : admin@kanby.local
+   [entrypoint] Starting Kanby on :3000
+   ```
+   Le conteneur passe ensuite à l'état **healthy** (Kanby fournit un
+   *healthcheck* sur `/api/health`, qui vérifie aussi la base de données).
+
+6. **Première connexion**
+   Ouvrez votre domaine, connectez-vous avec `DEFAULT_ADMIN_EMAIL` et la
+   valeur de **`SERVICE_PASSWORD_ADMIN`** (visible dans *Environment
+   Variables*). Kanby vous demande aussitôt de choisir votre propre mot de
+   passe.
+
+C'est tout 🎉 Créez votre premier tableau, puis invitez votre équipe depuis
+**Admin → Créer un utilisateur** (ou laissez les inscriptions ouvertes).
+
+### Mettre à jour sur Coolify
+
+Cliquez sur **Redeploy** : Coolify récupère la dernière version du dépôt,
+reconstruit l'image et applique automatiquement les migrations de la base au
+démarrage. Les données sont dans le volume `kanby-db` et sont conservées.
+Pour des mises à jour automatiques à chaque `git push`, activez
+*Auto Deploy* dans **Configuration → Advanced** (dépôt relié par l'app GitHub
+de Coolify, ou webhook).
+
+### Sauvegarder sur Coolify
+
+- Le plus simple : dans la ressource, **Terminal** → service `db`, puis
+  `pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > /tmp/kanby.sql`
+  (ou planifiez une sauvegarde S3 si votre version de Coolify le propose).
+- Lors de la suppression de la ressource, Coolify demande s'il faut supprimer
+  les volumes : répondez **non** si vous voulez garder les données.
+
+### Dépannage Coolify
+
+| Symptôme | Cause probable / solution |
+|---|---|
+| *No available server* ou 502 | Le conteneur `app` n'est pas encore *healthy* : regardez ses logs (base indisponible, build en cours…). |
+| Connexion impossible, retour à la page de login | L'adresse utilisée doit être celle du champ *Domains* **en https** (le cookie de session est « Secure »). Après un changement de domaine, faites **Redeploy**. |
+| `JWT_SECRET n'est pas défini` | La variable `SERVICE_PASSWORD_64_JWT` a été vidée : supprimez-la puis redéployez pour la régénérer. |
+| Mot de passe admin perdu | Si un autre admin existe : **Admin → … → Réinitialiser le mot de passe**. Sinon, changez `DEFAULT_ADMIN_EMAIL` (nouvel admin créé au prochain démarrage). |
+
+<details>
+<summary><strong>Variante : build pack « Dockerfile » + base PostgreSQL Coolify</strong></summary>
+
+Si vous préférez gérer la base séparément :
+
+1. **+ New → Database → PostgreSQL** ; une fois démarrée, copiez son
+   **Postgres URL (internal)**.
+2. **+ New → Public Repository** → `https://github.com/PetitOursManu/Kanby`,
+   *Build Pack* **Dockerfile**, *Ports Exposes* `3000`.
+3. Variables : `DATABASE_URL` (l'URL interne copiée), `JWT_SECRET`
+   (`openssl rand -hex 32`), `APP_URL` (votre domaine en https),
+   `DEFAULT_ADMIN_EMAIL`, et éventuellement `ALLOW_REGISTRATION=false`.
+   Sans `DEFAULT_ADMIN_PASSWORD`, le mot de passe admin temporaire s'affiche
+   dans les logs de déploiement.
+4. Domaine, puis **Deploy**.
+</details>
+
+---
+
+## Installer avec Docker Compose
+
+Pour un serveur, un NAS ou un VPS sans Coolify.
+
+1. **Récupérez Kanby** :
    ```bash
    git clone https://github.com/PetitOursManu/Kanby.git
    cd Kanby
-   ```
-
-2. **Copiez le fichier d'exemple** de configuration :
-   ```bash
    cp .env.example .env
    ```
-
-3. **Éditez le fichier `.env`** et changez au minimum :
-   - `JWT_SECRET` : mettez une chaîne aléatoire longue.
-     Pour en générer une : `openssl rand -hex 32`
-   - `DEFAULT_ADMIN_PASSWORD` : mot de passe temporaire du compte admin.
-   - `DEFAULT_ADMIN_EMAIL` : l'email du compte admin.
-   - `APP_URL` : l'adresse à laquelle vous accéderez à Kanby
-     (ex. `https://kanby.mondomaine.fr`).
-
-4. **Lancez l'application** :
+2. **Éditez `.env`** — au minimum :
+   - `JWT_SECRET` : collez le résultat de `openssl rand -hex 32` (obligatoire)
+   - `POSTGRES_PASSWORD` : un mot de passe pour la base
+   - `APP_URL` : l'adresse de Kanby (ex. `https://kanby.mondomaine.fr`)
+   - `DEFAULT_ADMIN_EMAIL` : votre email
+3. **Lancez** :
    ```bash
    docker compose up -d
+   docker compose logs app | grep "Mot de passe"   # mot de passe admin temporaire
    ```
-   Au premier démarrage, la base de données est créée et le compte admin est
-   généré automatiquement.
+4. Ouvrez `APP_URL` (par défaut <http://localhost:3000>) et connectez-vous.
+   Kanby vous demande de changer le mot de passe dès la première connexion.
 
-5. **Ouvrez Kanby** dans votre navigateur à l'adresse indiquée par `APP_URL`
-   (par défaut <http://localhost:3000>).
-
-6. **Connectez-vous** avec l'email et le mot de passe admin définis dans
-   `.env`. L'application vous demandera de **changer ce mot de passe** dès la
-   première connexion.
-
-### Ports Docker
-
-- **Port par défaut** : `3000` (configurable via `APP_PORT` dans `.env`)
-- **Port de test** : `3002` (via `docker-compose-test.yml` pour tester sans affecter la production)
-
----
+Un fichier [`docker-compose-test.yml`](./docker-compose-test.yml) permet de
+lancer une seconde instance de test sur le port **3002** sans toucher à la
+production : `docker compose -f docker-compose-test.yml up -d`.
 
 ## Mise à jour
 
 ```bash
 git pull
-docker compose build
-docker compose up -d
+docker compose up -d --build
 ```
 
 Les migrations de base de données s'appliquent automatiquement au démarrage.
-
-## Tests
-
-Kanby inclut une suite de tests unitaires et d'intégration avec **Vitest** :
-
-```bash
-# Lancer tous les tests
-npm run test
-
-# Lancer les tests avec couverture
-npm run test:coverage
-```
-
-Les tests couvrent :
-- La validation des mots de passe
-- Le rate limiting des endpoints API
-- Les fonctions utilitaires
-
----
 
 ## Sauvegarde
 
 ```bash
 # Sauvegarder
 docker compose exec db pg_dump -U kanby kanby > sauvegarde.sql
-
 # Restaurer
 cat sauvegarde.sql | docker compose exec -T db psql -U kanby kanby
 ```
 
 ---
 
-## API mobile & intégrations
+## Variables d'environnement
 
-Kanby expose une **API JSON complète** permettant à un client mobile
-(Android / iOS) ou à un script externe d'utiliser toutes les fonctionnalités de
-l'application.
-
-### Authentification par token
-
-1. **Connexion** : `POST /api/auth/token` avec `{ email, password }` →
-   renvoie `{ token: "kbt_...", user: { ... } }`.
-2. **Requêtes** : envoyer le token dans le header
-   `Authorization: Bearer kbt_...` sur tous les endpoints `/api/*`.
-3. **Déconnexion** : `POST /api/auth/revoke` avec le token → le révoque.
-
-Les tokens sont hashés (SHA-256) en base et peuvent être révoqués à tout
-moment depuis la page **Profil** ou via l'API.
-
-### Documentation complète
-
-Voir [`API.md`](./API.md) pour la liste de tous les endpoints, les corps de
-requête, les réponses et des exemples `curl`.
-
----
-
-## Widget Dashy (optionnel)
-
-Kanby expose un résumé léger de vos tâches, intégrable dans un dashboard
-externe comme **Dashy**. Voir [`NOTES.md`](./NOTES.md) pour la procédure
-complète. Cette fonctionnalité est **100 % optionnelle** et reste invisible
-si vous ne l'utilisez pas.
+| Variable | Rôle | Défaut |
+|---|---|---|
+| `JWT_SECRET` | Secret de signature des sessions (32 caractères min.) | **obligatoire** |
+| `APP_URL` | URL publique ; `https://` active les cookies sécurisés | `http://localhost:3000` |
+| `DATABASE_URL` | Connexion PostgreSQL (construite par les fichiers compose) | — |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Base PostgreSQL (compose) | `kanby` |
+| `APP_PORT` | Port exposé sur l'hôte (compose) | `3000` |
+| `JWT_EXPIRES_IN` | Durée de session en secondes (5 min à 1 an) | `2592000` (30 j) |
+| `AUTO_ADMIN_ON_BOOT` | Crée l'admin au démarrage | `true` |
+| `DEFAULT_ADMIN_EMAIL` | Email de l'admin créé au démarrage | `admin@kanby.local` |
+| `DEFAULT_ADMIN_PASSWORD` | Mot de passe temporaire ; vide = généré et affiché dans les logs | *(vide)* |
+| `DEFAULT_ADMIN_NAME` | Nom affiché de l'admin | `Administrateur` |
+| `ALLOW_REGISTRATION` | `false` ferme les inscriptions publiques | `true` |
+| `AUTO_ADMIN_FIRST` | Le 1er inscrit devient admin (dev) | `false` |
 
 ---
 
 ## Administration
 
-Le compte admin a accès à un panneau **Admin** :
-- liste des utilisateurs, activation/désactivation, suppression, création
-- vue de tous les tableaux (personnels et d'équipe)
-- statistiques simples (utilisateurs, tableaux, tâches actives/terminées)
-- réglages de la connexion avec Kosmy Board (voir ci-dessous)
-
----
+Le compte admin a accès au menu **Admin** :
+- utilisateurs : recherche, création, rôle admin, mot de passe temporaire,
+  désactivation, suppression ;
+- tous les tableaux (ouverts en **lecture seule** : un admin n'est pas membre) ;
+- statistiques (utilisateurs, tableaux, tâches actives / terminées) ;
+- connexion avec Kosmy Board.
 
 ## Se connecter avec Kosmy Board (optionnel)
 
@@ -171,7 +264,7 @@ Kanby accepte la connexion par **Kosmy Board** (OpenID Connect) : le bouton
 1. Dans le Board, ajoutez l'instance Kanby puis ouvrez **Modifier → Connexion unique** et activez-la.
    L'adresse de retour (`{APP_URL}/auth/kosmy-board/callback`) et l'adresse de lancement
    (`{APP_URL}/auth/kosmy-board/login`) sont déjà remplies.
-2. Dans Kanby, **Admin → Connexion avec Kosmy Board** : collez l'émetteur, l'identifiant client et le
+2. Dans Kanby, **Admin → Kosmy Board** : collez l'émetteur, l'identifiant client et le
    secret client affichés par le Board. Le secret n'est plus jamais réaffiché ensuite.
 3. Chaque utilisateur relie son compte depuis **Profil → Kosmy Board → Relier à Kosmy Board**
    (une fois connecté avec son mot de passe).
@@ -182,49 +275,74 @@ défaut et ne donne jamais de droits d'administration. `APP_URL` doit être l'ad
 
 ---
 
-## Variables d'environnement
+## API mobile & intégrations
 
-| Variable | Rôle | Défaut |
-|---|---|---|
-| `POSTGRES_USER` | Utilisateur PostgreSQL | `kanby` |
-| `POSTGRES_PASSWORD` | Mot de passe PostgreSQL | `kanby` |
-| `POSTGRES_DB` | Nom de la base | `kanby` |
-| `APP_PORT` | Port exposé sur l'hôte | `3000` |
-| `APP_URL` | URL publique (cookies sécurisés) | `http://localhost:3000` |
-| `JWT_SECRET` | Secret de signature des sessions | **obligatoire** |
-| `JWT_EXPIRES_IN` | Durée de session (secondes) | `2592000` (30 j) |
-| `AUTO_ADMIN_ON_BOOT` | Crée l'admin au démarrage | `true` |
-| `DEFAULT_ADMIN_EMAIL` | Email de l'admin par défaut | `admin@kanby.local` |
-| `DEFAULT_ADMIN_PASSWORD` | Mot de passe admin temporaire | `changeme123` |
-| `DEFAULT_ADMIN_NAME` | Nom affiché de l'admin | `Administrateur` |
-| `AUTO_ADMIN_FIRST` | 1er inscrit devient admin si vrai | `false` |
+Kanby expose une **API JSON complète** pour un client mobile ou un script.
 
----
+1. **Connexion** : `POST /api/auth/token` avec `{ email, password }` →
+   `{ token: "kbt_...", user: { ... } }`.
+2. **Requêtes** : header `Authorization: Bearer kbt_...` sur `/api/*`.
+3. **Déconnexion** : `POST /api/auth/revoke` avec le token.
 
-## Stack technique
+Les tokens sont hashés (SHA-256) en base et révocables depuis **Profil**.
+Tous les endpoints sont décrits dans [`API.md`](./API.md).
 
-- **Next.js** (App Router) + **TypeScript**
-- **PostgreSQL** + **Prisma** (ORM)
-- **@dnd-kit** (glisser-déposer) + **framer-motion** (animations)
-- **TailwindCSS** + **next-themes** (thème clair/sombre)
-- **canvas-confetti** (effet de célébration)
-- Authentification **JWT** (cookie httpOnly) + **tokens d'API** (`kbt_`) pour
-  le widget Dashy et l'API mobile
-- Déploiement **Docker** (image unique + Postgres)
-- **i18n** : internationalisation FR/EN avec sélecteur de langue
-- **Vitest** : tests unitaires et d'intégration
+## Widget Dashy (optionnel)
+
+Un résumé de vos tâches (aujourd'hui, en retard, à venir) intégrable en iframe
+dans **Dashy** ou tout autre tableau de bord : voir [`NOTES.md`](./NOTES.md).
 
 ---
 
-## Démarrage en développement (sans Docker)
+## Tests
+
+Kanby a trois niveaux de tests (152 tests au total) :
+
+```bash
+# 1. Tests unitaires (aucun prérequis)
+npm test
+
+# 2. Tests d'API (65 tests) — serveur Kanby démarré + sa base PostgreSQL
+KANBY_TEST_URL=http://localhost:3000 DATABASE_URL=... JWT_SECRET=... npm run test:api
+
+# 3. Tests de l'interface dans un vrai navigateur (17 scénarios)
+#    prérequis : npm i -D playwright && npx playwright install chromium
+KANBY_TEST_URL=http://localhost:3000 DATABASE_URL=... JWT_SECRET=... npm run test:e2e
+```
+
+Les tests d'API et d'interface créent leurs propres comptes et tableaux :
+lancez-les sur une base de **test**, jamais sur la production.
+
+Couverture : authentification, droits d'accès (membres, propriétaires,
+admins, étrangers au tableau), glisser-déposer réel à la souris, ordre des
+cartes après rechargement, fenêtre de carte, colonnes, filtre, notifications,
+thème clair/sombre, langue, téléphone, changement de mot de passe forcé,
+administration, widget.
+
+---
+
+## Développement (sans Docker)
 
 ```bash
 npm install
-cp .env.example .env          # configurez DATABASE_URL vers votre Postgres local
+cp .env.example .env          # DATABASE_URL vers votre Postgres local + JWT_SECRET
 npx prisma migrate dev
 npx prisma db seed
 npm run dev
 ```
+
+Avant de proposer une modification : `npm run typecheck && npm run lint && npm test`.
+
+## Stack technique
+
+- **Next.js 14** (App Router) + **TypeScript**
+- **PostgreSQL** + **Prisma**
+- **@dnd-kit** (glisser-déposer) + **framer-motion** (animations)
+- **Tailwind CSS** (jetons de thème clair/sombre) + **next-themes**
+- **lucide-react** (icônes), **canvas-confetti**
+- Authentification **JWT** (cookie httpOnly) + **tokens d'API** `kbt_`
+- **Vitest** + **Playwright** pour les tests
+- Image **Docker** unique + PostgreSQL ; design réalisé avec **Mocky**
 
 ---
 

@@ -1,0 +1,13 @@
+# Never send secrets or local build output to the Docker build.
+.env
+.env.*
+!.env.example
+node_modules
+.next
+.git
+.claude
+coverage
+tests
+*.log
+Dockerfile*
+docker-compose*.yml

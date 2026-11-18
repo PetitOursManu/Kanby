@@ -67,11 +67,17 @@ includes `mustChangePwd: true`. The mobile client must call
 
 ### GET /api/health
 
-Public health check — no auth required. Returns 200 if the app is running.
+Public health check — no auth required. Checks the app **and** the database
+(used by the Docker/Coolify health check).
 
 **Response 200**:
 ```json
-{ "status": "ok", "service": "kanby" }
+{ "status": "ok", "service": "kanby", "database": "ok" }
+```
+
+**Response 503** (database unreachable):
+```json
+{ "status": "error", "service": "kanby", "database": "unreachable" }
 ```
 
 ```bash
@@ -84,7 +90,9 @@ curl https://kanby.example.com/api/health
 
 ### POST /api/auth/register
 
-Create a new account.
+Create a new account. Returns **403** when the instance runs with
+`ALLOW_REGISTRATION=false` (only admins create accounts then). Display name:
+80 characters max.
 
 **Auth**: none
 
@@ -243,6 +251,19 @@ Revoke an API token by ID.
 
 **Response 200**: `{ "ok": true }`
 
+
+### POST /api/me/language
+
+Set the interface language (`fr` or `en`). Stored in the `kanby_locale`
+cookie and, when signed in, on the account so notifications reach the user
+in their language. Works signed out (login page).
+
+```json
+{ "locale": "en" }
+```
+
+**Response 200**: `{ "ok": true, "locale": "en" }` — 400 for any other locale.
+
 ---
 
 ## Boards
@@ -334,6 +355,8 @@ Get a full board with columns, cards, labels, and members.
 ### PATCH /api/boards/{id}
 
 Update board name or type. Promoting to TEAM creates an owner membership.
+Turning a TEAM board back into PERSONAL removes every other member and clears
+their assignments on the board. An empty name returns 400.
 
 **Auth**: token or session (must be board owner or admin)
 
@@ -372,7 +395,9 @@ List board members.
 
 ### POST /api/boards/{id}/members
 
-Invite a member by userId or email.
+Invite a member by userId or email. Only TEAM boards can be shared (400 on a
+personal board). Unknown or deactivated users return 404. The invited user
+gets a notification.
 
 **Auth**: token or session (must be board owner)
 
@@ -386,9 +411,11 @@ Or: `{ "userId": "ck..." }`
 
 ### DELETE /api/boards/{id}/members?userId={userId}
 
-Remove a member.
+Remove a member. The owner can remove anyone except themself; any member can
+remove **themself** (leave the board). The member's assignments on the board
+are cleared.
 
-**Auth**: token or session (must be board owner)
+**Auth**: token or session (board owner, or the member themself)
 
 **Response 200**: `{ "ok": true }`
 
@@ -411,6 +438,11 @@ Create a column.
 ### PATCH /api/columns/{id}
 
 Update column name, kind, order, or color.
+
+- `order` is the **target index** (0-based): the column is moved there and
+  every other column is shifted, so positions always stay `0..n-1`.
+- `color` must be `#rrggbb` or `null`.
+- Changing `kind` to/from `DONE` completes / reopens the column's cards.
 
 **Auth**: token or session (must be board member)
 
@@ -485,7 +517,29 @@ Update card fields and/or move to a different column.
 }
 ```
 
-Moving to a DONE column sets `completedAt`. Moving out of DONE clears it.
+`columnId` must belong to the same board (400 otherwise). `order` is the
+**target index** in the column; the other cards of both columns are re-indexed
+in one transaction (same as `POST /api/cards/{id}/move`). `dueDate` accepts
+`YYYY-MM-DD` (stored as that calendar day) or an ISO date; an invalid date
+returns 400; `null` clears it.
+
+Moving into a DONE column sets `completedAt`. Moving out of DONE clears it.
+Reordering inside a DONE column keeps the original completion date.
+
+**Response 200**: `{ "card": { ... } }`
+
+### POST /api/cards/{id}/move
+
+Move a card to a position. Recommended for drag & drop.
+
+**Auth**: token or session (must be board member)
+
+```json
+{ "columnId": "ck_target_column", "index": 0 }
+```
+
+`index` is 0-based and clamped to the column size. Both columns are
+re-indexed in a single transaction.
 
 **Response 200**: `{ "card": { ... } }`
 
@@ -499,7 +553,8 @@ Delete a card.
 
 ### POST /api/cards/{id}/labels
 
-Toggle a label on a card (attach if not present, detach if present).
+Toggle a label on a card (attach if not present, detach if present). The
+label must belong to the card's board (400 otherwise).
 
 **Auth**: token or session (must be board member)
 
@@ -511,7 +566,8 @@ Toggle a label on a card (attach if not present, detach if present).
 
 ### POST /api/cards/{id}/assign
 
-Assign or unassign a user.
+Assign or unassign a user. The user must be a member (or the owner) of the
+board — 400 otherwise. The assignee is notified.
 
 **Auth**: token or session (must be board member)
 
@@ -674,31 +730,35 @@ Create a new user (admin creates account).
 { "email": "new@example.com", "displayName": "New User", "password": "temp123", "globalRole": "USER" }
 ```
 
-Created user gets `mustChangePwd: true`. Minimum password: 6 chars.
+Created user gets `mustChangePwd: true`. Minimum password: 8 chars (same rule
+as registration).
 
 **Response 201**: `{ "user": { ... } }`
 
 ### PATCH /api/admin/users
 
-Activate/deactivate a user.
+Update a user: activate/deactivate, change the global role, or set a
+temporary password (the user must change it at next sign-in).
 
 **Auth**: token or session (admin)
 
 ```json
 { "userId": "ck...", "active": false }
+{ "userId": "ck...", "globalRole": "ADMIN" }
+{ "userId": "ck...", "password": "temporary-1" }
 ```
 
-Cannot deactivate self.
+You cannot deactivate yourself or remove your own admin role. Unknown user → 404.
 
-**Response 200**: `{ "user": { "id": "ck...", "active": false } }`
+**Response 200**: `{ "user": { ... } }`
 
 ### DELETE /api/admin/users/{id}
 
-Delete a user account (cascade).
+Delete a user account (cascade: their boards, comments and tokens).
 
 **Auth**: token or session (admin)
 
-Cannot delete self.
+Cannot delete self. Unknown user → 404.
 
 **Response 200**: `{ "ok": true }`
 

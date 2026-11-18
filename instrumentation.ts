@@ -13,7 +13,8 @@ export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
   const autoBoot = process.env.AUTO_ADMIN_ON_BOOT === "true";
-  if (!autoBoot) return;
+  // The Docker entrypoint already migrated and seeded the database.
+  if (!autoBoot || process.env.KANBY_DB_READY === "1") return;
 
   try {
     // Import lazily so this code is never loaded in the browser runtime.

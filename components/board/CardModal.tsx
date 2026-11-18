@@ -69,6 +69,8 @@ export function CardModal({
   const [labelDraft, setLabelDraft] = useState<{ name: string; color: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  // Latest card, so async callbacks never write back a stale copy.
+  const cardRef = useRef<CardDetail | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -77,6 +79,7 @@ export function CardModal({
     api<{ card: CardDetail }>(`/api/cards/${cardId}`)
       .then(({ card }) => {
         if (!alive) return;
+        cardRef.current = card;
         setCard(card);
         setTitle(card.title);
         setDescription(card.description ?? "");
@@ -95,7 +98,11 @@ export function CardModal({
     el.style.height = `${el.scrollHeight}px`;
   }, [title, card]);
 
-  function update(next: CardDetail) {
+  function update(fn: (current: CardDetail) => CardDetail) {
+    const current = cardRef.current;
+    if (!current) return;
+    const next = fn(current);
+    cardRef.current = next;
     setCard(next);
     onChange(toRow(next));
   }
@@ -116,7 +123,7 @@ export function CardModal({
     if (!card) return;
     await run(`patch:${Object.keys(body).join(",")}`, async () => {
       const { card: row } = await apiPatch<{ card: CardRow }>(`/api/cards/${card.id}`, body);
-      update({ ...card, title: row.title, description: row.description, dueDate: row.dueDate, updatedAt: row.updatedAt });
+      update((c) => ({ ...c, title: row.title, description: row.description, dueDate: row.dueDate, updatedAt: row.updatedAt }));
     });
   }
 
@@ -140,12 +147,13 @@ export function CardModal({
       const { card: row } = await apiPost<{ card: CardRow }>(`/api/cards/${card.id}/move`, { columnId, index: 1e9 });
       const col = columns.find((c) => c.id === columnId)!;
       const next: CardDetail = {
-        ...card,
+        ...(cardRef.current ?? card),
         columnId: row.columnId,
         order: row.order,
         completedAt: row.completedAt,
         column: { id: col.id, name: col.name, kind: col.kind },
       };
+      cardRef.current = next;
       setCard(next);
       onMoved(toRow(next), from);
     });
@@ -155,7 +163,7 @@ export function CardModal({
     if (!card) return;
     await run("assign", async () => {
       const { card: res } = await apiPost<{ card: { assignee: Person | null } }>(`/api/cards/${card.id}/assign`, { userId });
-      update({ ...card, assignee: res.assignee, assigneeId: res.assignee?.id ?? null });
+      update((c) => ({ ...c, assignee: res.assignee, assigneeId: res.assignee?.id ?? null }));
     });
   }
 
@@ -163,10 +171,10 @@ export function CardModal({
     if (!card) return;
     await run(`label:${label.id}`, async () => {
       const { attached } = await apiPost<{ attached: boolean }>(`/api/cards/${card.id}/labels`, { labelId: label.id });
-      const labels = attached
-        ? [...card.labels.filter((l) => l.label.id !== label.id), { label }]
-        : card.labels.filter((l) => l.label.id !== label.id);
-      update({ ...card, labels } as CardDetail);
+      update((c) => ({
+        ...c,
+        labels: attached ? [...c.labels.filter((l) => l.label.id !== label.id), { label }] : c.labels.filter((l) => l.label.id !== label.id),
+      }));
     });
   }
 
@@ -181,7 +189,7 @@ export function CardModal({
       onLabelCreated(label);
       setLabelDraft(null);
       await apiPost(`/api/cards/${card.id}/labels`, { labelId: label.id });
-      update({ ...card, labels: [...card.labels, { label }] } as CardDetail);
+      update((c) => ({ ...c, labels: [...c.labels, { label }] }));
     });
   }
 
@@ -191,18 +199,18 @@ export function CardModal({
     await run("item", async () => {
       const { item } = await apiPost<{ item: CardDetail["checklist"][number] }>("/api/checklist", { cardId: card.id, text });
       setNewItem("");
-      update({ ...card, checklist: [...card.checklist, item] });
+      update((c) => ({ ...c, checklist: [...c.checklist, item] }));
     });
   }
 
   async function toggleItem(id: string, done: boolean) {
     if (!card) return;
-    const prev = card;
-    update({ ...card, checklist: card.checklist.map((i) => (i.id === id ? { ...i, done } : i)) });
+    const flip = (value: boolean) => (c: CardDetail) => ({ ...c, checklist: c.checklist.map((i) => (i.id === id ? { ...i, done: value } : i)) });
+    update(flip(done));
     try {
       await apiPatch(`/api/checklist/${id}`, { done });
     } catch (e) {
-      update(prev);
+      update(flip(!done));
       toast.error(e);
     }
   }
@@ -211,7 +219,7 @@ export function CardModal({
     if (!card) return;
     await run(`item:${id}`, async () => {
       await apiDelete(`/api/checklist/${id}`);
-      update({ ...card, checklist: card.checklist.filter((i) => i.id !== id) });
+      update((c) => ({ ...c, checklist: c.checklist.filter((i) => i.id !== id) }));
     });
   }
 
@@ -221,7 +229,7 @@ export function CardModal({
     await run("comment", async () => {
       const { comment: c } = await apiPost<{ comment: CardDetail["comments"][number] }>("/api/comments", { cardId: card.id, text });
       setComment("");
-      update({ ...card, comments: [...card.comments, c] });
+      update((cur) => ({ ...cur, comments: [...cur.comments, c] }));
     });
   }
 
@@ -230,7 +238,7 @@ export function CardModal({
     if (!(await confirm({ title: t("card.deleteCommentConfirm"), danger: true, confirm: t("card.delete") }))) return;
     await run(`comment:${id}`, async () => {
       await apiDelete(`/api/comments/${id}`);
-      update({ ...card, comments: card.comments.filter((c) => c.id !== id) });
+      update((cur) => ({ ...cur, comments: cur.comments.filter((c) => c.id !== id) }));
     });
   }
 

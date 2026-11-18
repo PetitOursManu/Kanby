@@ -1,5 +1,7 @@
-# Kanby — docker-compose prêt à l'emploi
-# Lancement : docker compose up -d
+# Kanby — docker compose prêt à l'emploi (serveur, NAS, VPS…)
+#   cp .env.example .env   # puis éditez au moins JWT_SECRET
+#   docker compose up -d
+# Pour Coolify, utilisez plutôt docker-compose.coolify.yml (voir README).
 
 services:
   db:
@@ -12,7 +14,7 @@ services:
     volumes:
       - kanby-db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kanby}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kanby} -d ${POSTGRES_DB:-kanby}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -27,16 +29,19 @@ services:
       - "${APP_PORT:-3000}:3000"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-kanby}:${POSTGRES_PASSWORD:-kanby}@db:5432/${POSTGRES_DB:-kanby}?schema=public
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:?Définissez JWT_SECRET dans .env (openssl rand -hex 32)}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-2592000}
       APP_URL: ${APP_URL:-http://localhost:3000}
-      # Auto-création du compte admin au premier démarrage :
+      # Compte admin créé au premier démarrage. Sans DEFAULT_ADMIN_PASSWORD,
+      # un mot de passe aléatoire est généré et affiché dans les logs :
+      #   docker compose logs app | grep "Mot de passe"
       AUTO_ADMIN_ON_BOOT: ${AUTO_ADMIN_ON_BOOT:-true}
       DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@kanby.local}
-      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-changeme123}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-}
       DEFAULT_ADMIN_NAME: ${DEFAULT_ADMIN_NAME:-Administrateur}
-      # (Optionnel) le premier utilisateur inscrit devient admin si aucun
-      # admin par défaut n'est configuré. Désactivé par défaut.
+      # Inscriptions publiques (false = seul l'admin crée les comptes).
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
+      # (Optionnel) le premier inscrit devient admin si aucun admin n'existe.
       AUTO_ADMIN_FIRST: ${AUTO_ADMIN_FIRST:-false}
 
 volumes:

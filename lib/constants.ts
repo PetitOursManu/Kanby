@@ -19,3 +19,9 @@ export const API_TOKEN_PREFIX_LEN = 8;
 
 /** Session JWT default lifetime (30 days). */
 export const DEFAULT_SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
+
+/** Session lifetime in seconds: JWT_EXPIRES_IN when valid (5 min to 1 year), else 30 days. */
+export function sessionTtlSeconds(): number {
+  const v = Number(process.env.JWT_EXPIRES_IN);
+  return Number.isInteger(v) && v >= 300 && v <= 60 * 60 * 24 * 365 ? v : DEFAULT_SESSION_TTL_SECONDS;
+}

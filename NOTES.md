@@ -88,6 +88,8 @@ Chaque élément contient : `id`, `title`, `dueDate` (ISO), `boardId`,
 Dans Dashy, ajoutez un widget de type **Iframe** (ou *Embedded Widget*) :
 
 - **URL** : `http://<votre-kanby>:3000/widget/view?token=kbt_xxxxxxxxxxxxxxxx`
+- **Thème** : sombre par défaut ; ajoutez `&theme=light` pour un fond clair
+  (ex. `…/widget/view?token=kbt_xxx&theme=light`).
 - **Largeur recommandée** : ~360 px
 - **Hauteur recommandée** : ~600 px
 

@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { SESSION_COOKIE, DEFAULT_SESSION_TTL_SECONDS } from "@/lib/constants";
+import { SESSION_COOKIE, sessionTtlSeconds } from "@/lib/constants";
 import type { GlobalRole, User } from "@prisma/client";
 import {
   signSession,
@@ -19,14 +19,14 @@ function getCookieOptions() {
     sameSite: "lax" as const,
     secure,
     path: "/",
-    maxAge: DEFAULT_SESSION_TTL_SECONDS,
+    maxAge: sessionTtlSeconds(),
   };
 }
 
 /** Sign a JWT for the given user and set it as an httpOnly cookie. */
 export async function issueSession(user: { id: string; globalRole: GlobalRole }): Promise<void> {
   const payload: SessionPayload = { sub: user.id, role: user.globalRole };
-  const token = signSession(payload, DEFAULT_SESSION_TTL_SECONDS);
+  const token = signSession(payload, sessionTtlSeconds());
   const store = cookies();
   store.set(SESSION_COOKIE, token, getCookieOptions());
 }

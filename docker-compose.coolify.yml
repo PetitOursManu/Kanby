@@ -1,0 +1,53 @@
+# Kanby — déploiement sur Coolify (build pack « Docker Compose »).
+#
+# Coolify génère automatiquement les valeurs SERVICE_* au premier déploiement
+# et les conserve ensuite (onglet « Environment Variables ») :
+#   SERVICE_URL_APP_3000      → domaine public, routé vers le port 3000 de « app »
+#   SERVICE_PASSWORD_64_JWT   → secret des sessions (64 caractères)
+#   SERVICE_USER_POSTGRES / SERVICE_PASSWORD_POSTGRES → identifiants PostgreSQL
+#   SERVICE_PASSWORD_ADMIN    → mot de passe temporaire du compte admin
+# Aucun port n'est publié : c'est le proxy de Coolify qui expose Kanby en
+# HTTPS sur le domaine choisi.
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - SERVICE_URL_APP_3000
+      - APP_URL=${SERVICE_URL_APP}
+      - DATABASE_URL=postgresql://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@db:5432/${POSTGRES_DB:-kanby}?schema=public
+      - JWT_SECRET=${SERVICE_PASSWORD_64_JWT}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-2592000}
+      - AUTO_ADMIN_ON_BOOT=${AUTO_ADMIN_ON_BOOT:-true}
+      - DEFAULT_ADMIN_EMAIL=${DEFAULT_ADMIN_EMAIL:-admin@kanby.local}
+      - DEFAULT_ADMIN_PASSWORD=${SERVICE_PASSWORD_ADMIN}
+      - DEFAULT_ADMIN_NAME=${DEFAULT_ADMIN_NAME:-Administrateur}
+      - ALLOW_REGISTRATION=${ALLOW_REGISTRATION:-true}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -Y off -O /dev/null http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${SERVICE_USER_POSTGRES}
+      - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+      - POSTGRES_DB=${POSTGRES_DB:-kanby}
+    volumes:
+      - kanby-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SERVICE_USER_POSTGRES} -d ${POSTGRES_DB:-kanby}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  kanby-db:

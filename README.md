@@ -112,7 +112,7 @@ presque rien à saisir.
    | Variable | Défaut | Conseil |
    |---|---|---|
    | `DEFAULT_ADMIN_EMAIL` | `admin@kanby.local` | mettez votre email **avant** le 1er déploiement |
-   | `ALLOW_REGISTRATION` | `true` | `false` pour qu'un inconnu ne puisse pas créer de compte sur votre instance publique |
+   | `ALLOW_REGISTRATION` | `true` | valeur de départ ; ensuite, ouvrez ou fermez les inscriptions depuis **Admin → Réglages**, sans redéployer |
    | `DEFAULT_ADMIN_NAME` | `Administrateur` | |
    | `JWT_EXPIRES_IN` | `2592000` (30 jours) | durée des sessions en secondes |
 
@@ -244,7 +244,7 @@ cat sauvegarde.sql | docker compose exec -T db psql -U kanby kanby
 | `DEFAULT_ADMIN_EMAIL` | Email de l'admin créé au démarrage | `admin@kanby.local` |
 | `DEFAULT_ADMIN_PASSWORD` | Mot de passe temporaire ; vide = généré et affiché dans les logs | *(vide)* |
 | `DEFAULT_ADMIN_NAME` | Nom affiché de l'admin | `Administrateur` |
-| `ALLOW_REGISTRATION` | `false` ferme les inscriptions publiques | `true` |
+| `ALLOW_REGISTRATION` | Valeur de départ des inscriptions publiques (`false` = fermées). Le réglage **Admin → Réglages** a ensuite priorité | `true` |
 | `AUTO_ADMIN_FIRST` | Le 1er inscrit devient admin (dev) | `false` |
 
 ---
@@ -256,6 +256,8 @@ Le compte admin a accès au menu **Admin** :
   désactivation, suppression ;
 - tous les tableaux (ouverts en **lecture seule** : un admin n'est pas membre) ;
 - statistiques (utilisateurs, tableaux, tâches actives / terminées) ;
+- **Réglages** : ouvrir ou fermer les inscriptions publiques d'un clic
+  (fermées : seuls les admins créent les comptes) ;
 - connexion avec Kosmy Board.
 
 ## Se connecter avec Kosmy Board (optionnel)

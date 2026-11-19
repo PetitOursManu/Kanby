@@ -533,4 +533,12 @@ export const fr: Record<string, string> = {
   "api.invalidType": "Type invalide",
   "api.invalidRole": "Rôle invalide",
   "api.nothingToChange": "Rien à modifier",
+  "admin.settings": "Réglages",
+  "admin.registration": "Inscriptions publiques",
+  "admin.registrationOnHint": "Tout le monde peut créer un compte depuis la page de connexion.",
+  "admin.registrationOffHint": "Seuls les administrateurs peuvent créer des comptes (bouton « Créer un utilisateur »). La page d'inscription indique qu'elles sont fermées.",
+  "admin.registrationOpen": "Ouvertes",
+  "admin.registrationClosedBadge": "Fermées",
+  "admin.registrationOpened": "Inscriptions ouvertes.",
+  "admin.registrationClosed": "Inscriptions fermées.",
 };

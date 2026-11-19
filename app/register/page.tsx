@@ -11,7 +11,7 @@ export default async function RegisterPage() {
   if (await getSessionUser()) redirect("/boards");
   return (
     <I18nProvider locale={getServerLocale()}>
-      <RegisterForm allowed={registrationAllowed()} />
+      <RegisterForm allowed={await registrationAllowed()} />
     </I18nProvider>
   );
 }

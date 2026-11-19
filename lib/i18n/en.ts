@@ -533,4 +533,12 @@ export const en: Record<string, string> = {
   "api.invalidType": "Invalid type",
   "api.invalidRole": "Invalid role",
   "api.nothingToChange": "Nothing to change",
+  "admin.settings": "Settings",
+  "admin.registration": "Public sign-up",
+  "admin.registrationOnHint": "Anyone can create an account from the sign-in page.",
+  "admin.registrationOffHint": "Only administrators can create accounts (\"Create user\" button). The sign-up page says sign-ups are closed.",
+  "admin.registrationOpen": "Open",
+  "admin.registrationClosedBadge": "Closed",
+  "admin.registrationOpened": "Sign-up opened.",
+  "admin.registrationClosed": "Sign-up closed.",
 };

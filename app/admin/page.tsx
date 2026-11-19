@@ -5,6 +5,7 @@ import { requirePageUser } from "@/lib/auth/page";
 import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
 import { appBaseUrl, initiateLoginUri, redirectUri } from "@/lib/kosmy-board/oidc";
+import { registrationAllowed, registrationAllowedByEnv } from "@/lib/registration";
 
 export default async function AdminPage() {
   const user = await requirePageUser({ path: "/admin", admin: true });
@@ -49,9 +50,11 @@ export default async function AdminPage() {
     loginUri: initiateLoginUri(base),
   };
 
+  const settings = { allowRegistration: await registrationAllowed(), envDefault: registrationAllowedByEnv() };
+
   return (
     <AppShell active="admin" title={getServerTranslator()("admin.title")}>
-      <AdminPanel users={users} boards={boards} stats={stats} currentUserId={user.id} kosmy={kosmy} />
+      <AdminPanel users={users} boards={boards} stats={stats} currentUserId={user.id} kosmy={kosmy} settings={settings} />
     </AppShell>
   );
 }

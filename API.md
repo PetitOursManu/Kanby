@@ -777,6 +777,19 @@ List all boards across all users.
 }
 ```
 
+### GET /api/admin/settings · PATCH /api/admin/settings
+
+Instance settings. Public sign-up can be opened or closed without
+redeploying; once set here it takes priority over `ALLOW_REGISTRATION`.
+
+**Auth**: token or session (admin)
+
+```json
+{ "allowRegistration": false }
+```
+
+**Response 200**: `{ "settings": { "allowRegistration": false, "envDefault": true } }`
+
 ### GET /api/admin/stats
 
 Global statistics.

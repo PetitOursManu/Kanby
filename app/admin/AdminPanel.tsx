@@ -58,7 +58,8 @@ type AdminBoard = {
   _count: { cards: number; members: number };
 };
 
-type Tab = "users" | "boards" | "kosmy";
+type Tab = "users" | "boards" | "settings" | "kosmy";
+export type InstanceSettings = { allowRegistration: boolean; envDefault: boolean };
 
 export function AdminPanel({
   users,
@@ -66,12 +67,14 @@ export function AdminPanel({
   stats,
   currentUserId,
   kosmy,
+  settings,
 }: {
   users: AdminUser[];
   boards: AdminBoard[];
   stats: Stats;
   currentUserId: string;
   kosmy: KosmyAdminSettings;
+  settings: InstanceSettings;
 }) {
   const { t } = useI18n();
   const [userList, setUserList] = useState(users);
@@ -82,6 +85,7 @@ export function AdminPanel({
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: "users", label: t("admin.users"), count: userList.length },
     { key: "boards", label: t("admin.allBoards"), count: boardList.length },
+    { key: "settings", label: t("admin.settings") },
     { key: "kosmy", label: "Kosmy Board" },
   ];
 
@@ -135,6 +139,7 @@ export function AdminPanel({
         />
       )}
       {tab === "boards" && <BoardsTable boards={boardList} />}
+      {tab === "settings" && <SettingsCard initial={settings} onCreateUser={() => setShowCreate(true)} />}
       {tab === "kosmy" && <KosmyBoardSettingsCard initial={kosmy} />}
 
       <CreateUserModal open={showCreate} onClose={() => setShowCreate(false)} onCreated={(u) => setUserList((list) => [u, ...list])} />
@@ -441,6 +446,63 @@ function CreateUserModal({ open, onClose, onCreated }: { open: boolean; onClose:
         </div>
       </form>
     </Modal>
+  );
+}
+
+function SettingsCard({ initial, onCreateUser }: { initial: InstanceSettings; onCreateUser: () => void }) {
+  const { t } = useI18n();
+  const toast = useToast();
+  const [open, setOpen] = useState(initial.allowRegistration);
+  const [busy, setBusy] = useState(false);
+
+  async function toggle() {
+    const next = !open;
+    setBusy(true);
+    setOpen(next);
+    try {
+      await apiPatch("/api/admin/settings", { allowRegistration: next });
+      toast.success(next ? t("admin.registrationOpened") : t("admin.registrationClosed"));
+    } catch (e) {
+      setOpen(!next);
+      toast.error(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="panel p-5">
+      <div className="flex items-start gap-4">
+        <div className="min-w-0 flex-1">
+          <h3 id="registration-title" className="text-[15px] font-semibold text-fg">
+            {t("admin.registration")}
+          </h3>
+          <p className="mt-1 text-sm text-muted">{open ? t("admin.registrationOnHint") : t("admin.registrationOffHint")}</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={open}
+          aria-labelledby="registration-title"
+          disabled={busy}
+          onClick={toggle}
+          className={cn(
+            "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-60",
+            open ? "bg-accent" : "bg-line-strong",
+          )}
+        >
+          <span className={cn("inline-block h-5 w-5 rounded-full bg-white shadow transition-transform", open ? "translate-x-[22px]" : "translate-x-0.5")} />
+        </button>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line pt-4 text-sm">
+        <span className={cn("badge", open ? "bg-accent-soft text-accent-fg" : "bg-sunken text-muted")}>
+          {open ? t("admin.registrationOpen") : t("admin.registrationClosedBadge")}
+        </span>
+        <button type="button" onClick={onCreateUser} className="btn-secondary btn-sm">
+          <UserPlus size={14} /> {t("admin.createUser")}
+        </button>
+      </div>
+    </section>
   );
 }
 

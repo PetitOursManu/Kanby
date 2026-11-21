@@ -9,7 +9,7 @@ import { registrationAllowed } from "@/lib/registration";
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  if (!registrationAllowed()) {
+  if (!(await registrationAllowed())) {
     return NextResponse.json({ error: "Les inscriptions sont fermées sur cette instance" }, { status: 403 });
   }
   const limited = rateLimitOr429(req, "register", 5, 60);

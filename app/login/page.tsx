@@ -15,7 +15,7 @@ export default async function LoginPage() {
   return (
     <I18nProvider locale={getServerLocale()}>
       <Suspense fallback={<div className="min-h-dvh bg-bg" />}>
-        <LoginForm kosmyEnabled={kosmyEnabled} allowRegistration={registrationAllowed()} />
+        <LoginForm kosmyEnabled={kosmyEnabled} allowRegistration={await registrationAllowed()} />
       </Suspense>
     </I18nProvider>
   );

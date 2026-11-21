@@ -96,3 +96,33 @@ describe("widget", () => {
     expect(await view.text()).toContain("Due");
   });
 });
+
+describe("instance settings: public sign-up", () => {
+  it("only admins read or change it; closing it blocks registration", async () => {
+    const admin = await createUser({ role: "ADMIN" });
+    const user = await createUser();
+    expect((await api("/api/admin/settings", { as: user })).status).toBe(403);
+    expect((await api("/api/admin/settings", { as: user, method: "PATCH", body: { allowRegistration: false } })).status).toBe(403);
+    expect((await api("/api/admin/settings", { as: admin, method: "PATCH", body: { allowRegistration: "no" } })).status).toBe(400);
+    try {
+      const off = await api("/api/admin/settings", { as: admin, method: "PATCH", body: { allowRegistration: false } });
+      expect(off.json.settings.allowRegistration).toBe(false);
+      const reg = await api("/api/auth/register", {
+        headers: { "x-forwarded-for": fakeIp() },
+        body: { email: uniqueEmail("closed"), password: "abcdefgh", displayName: "Closed" },
+      });
+      expect(reg.status).toBe(403);
+      const page = await (await fetch(BASE + "/login")).text();
+      expect(page).not.toContain('href="/register"');
+      // Admins can still create accounts.
+      expect((await api("/api/admin/users", { as: admin, body: { email: uniqueEmail("byadmin"), displayName: "X", password: "12345678" } })).status).toBe(201);
+    } finally {
+      await api("/api/admin/settings", { as: admin, method: "PATCH", body: { allowRegistration: true } });
+    }
+    const reg = await api("/api/auth/register", {
+      headers: { "x-forwarded-for": fakeIp() },
+      body: { email: uniqueEmail("open"), password: "abcdefgh", displayName: "Open" },
+    });
+    expect(reg.status).toBe(200);
+  });
+});

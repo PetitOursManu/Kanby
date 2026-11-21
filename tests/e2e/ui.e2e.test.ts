@@ -244,7 +244,11 @@ describe("boards and cards", () => {
     // Delete it.
     await page.locator(`#col-${columns[0].id}`).getByRole("button", { name: /Options de la colonne|Options for column/ }).click();
     await page.getByRole("menuitem", { name: /Supprimer la colonne|Delete column/ }).click();
-    await page.getByRole("dialog").getByRole("button", { name: /Supprimer la colonne|Delete column/ }).click();
+    // The column disappears at once (optimistic UI): wait for the server too.
+    await Promise.all([
+      page.waitForResponse((r) => r.url().endsWith(`/api/columns/${columns[0].id}`) && r.request().method() === "DELETE"),
+      page.getByRole("dialog").getByRole("button", { name: /Supprimer la colonne|Delete column/ }).click(),
+    ]);
     await page.locator(`#col-${columns[0].id}`).waitFor({ state: "detached" });
     expect(await prisma.column.findUnique({ where: { id: columns[0].id } })).toBeNull();
     await ctx.close();
@@ -355,6 +359,36 @@ describe("admin", () => {
     await page.getByText(/Lecture seule|Read-only/).waitFor();
     expect(await page.getByRole("button", { name: /Ajouter une tâche|Add a task/ }).count()).toBe(0);
     await ctx.close();
+  });
+});
+
+describe("admin settings", () => {
+  it("closes and reopens public sign-up from the admin page", async () => {
+    const admin = await createUser({ role: "ADMIN" });
+    const { ctx, page } = await signedIn(admin);
+    try {
+      await page.goto(BASE + "/admin");
+      await page.getByRole("tab", { name: /Réglages|Settings/ }).click();
+      const toggle = page.getByRole("switch", { name: /Inscriptions publiques|Public sign-up/ });
+      if ((await toggle.getAttribute("aria-checked")) === "false") {
+        await toggle.click();
+        await page.waitForTimeout(300);
+      }
+      await toggle.click();
+      await page.waitForFunction(() => document.querySelector("[role=switch]")?.getAttribute("aria-checked") === "false");
+      const visitor = await browser.newContext();
+      const p2 = await visitor.newPage();
+      await p2.goto(BASE + "/register");
+      await p2.getByText(/Les inscriptions sont fermées|Sign-ups are closed/).waitFor();
+      await p2.goto(BASE + "/login");
+      expect(await p2.locator('a[href="/register"]').count()).toBe(0);
+      await visitor.close();
+      await toggle.click();
+      await page.waitForFunction(() => document.querySelector("[role=switch]")?.getAttribute("aria-checked") === "true");
+    } finally {
+      await api("/api/admin/settings", { as: admin, method: "PATCH", body: { allowRegistration: true } });
+      await ctx.close();
+    }
   });
 });
 

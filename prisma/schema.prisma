@@ -77,6 +77,14 @@ model KosmyBoardSettings {
   updatedAt    DateTime @updatedAt
 }
 
+/// Instance-wide settings edited from the admin page. Single row (id = 1).
+model AppSettings {
+  id                Int      @id @default(1)
+  /// Public sign-up. null = follow the ALLOW_REGISTRATION env var.
+  allowRegistration Boolean?
+  updatedAt         DateTime @updatedAt
+}
+
 model ApiToken {
   id         String    @id @default(cuid())
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)

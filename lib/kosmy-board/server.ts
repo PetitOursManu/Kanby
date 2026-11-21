@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/passwords";
 import type { User } from "@prisma/client";
 import type { KosmyAccountRepo } from "@/lib/kosmy-board/accounts";
-import { FLOW_TTL_SECONDS } from "@/lib/kosmy-board/oidc";
+import { FLOW_TTL_SECONDS, clearDiscoveryCache, discover, normalizeIssuer } from "@/lib/kosmy-board/oidc";
 
 export type KosmySettings = {
   issuer: string;
@@ -25,6 +25,62 @@ export async function getKosmySettings(): Promise<KosmySettings | null> {
 
 export async function isKosmyEnabled(): Promise<boolean> {
   return (await getKosmySettings()) !== null;
+}
+
+/** What the admin screens may show: never the client secret, only whether one is saved. */
+export type KosmySettingsView = { issuer: string; clientId: string; autoCreate: boolean; hasSecret: boolean };
+
+export async function getKosmySettingsView(): Promise<KosmySettingsView> {
+  const row = await prisma.kosmyBoardSettings.findUnique({ where: { id: 1 } });
+  return {
+    issuer: row?.issuer ?? "",
+    clientId: row?.clientId ?? "",
+    autoCreate: row?.autoCreate ?? false,
+    hasSecret: !!row?.clientSecret,
+  };
+}
+
+export type SaveKosmyInput = { issuer?: unknown; clientId?: unknown; clientSecret?: unknown; autoCreate?: unknown };
+export type SaveKosmyError = "invalid_issuer" | "invalid_client_id" | "invalid_client_secret" | "missing_client_secret";
+export type SaveKosmyResult =
+  | { ok: true; settings: KosmySettingsView; reachable: boolean }
+  | { ok: false; error: SaveKosmyError };
+
+/**
+ * Save the "Se connecter avec Kosmy Board" settings (admin only).
+ * An empty / missing clientSecret keeps the stored one. Then checks right away
+ * whether the issuer answers (`reachable`).
+ */
+export async function saveKosmySettings(input: SaveKosmyInput): Promise<SaveKosmyResult> {
+  const str = (v: unknown) => (typeof v === "string" ? v : "");
+  const issuer = normalizeIssuer(str(input.issuer));
+  if (!issuer) return { ok: false, error: "invalid_issuer" };
+  const clientId = str(input.clientId).trim();
+  if (!clientId || clientId.length > 200) return { ok: false, error: "invalid_client_id" };
+
+  const existing = await prisma.kosmyBoardSettings.findUnique({ where: { id: 1 } });
+  const newSecret = str(input.clientSecret).trim();
+  if (newSecret.length > 500) return { ok: false, error: "invalid_client_secret" };
+  const clientSecret = newSecret || existing?.clientSecret || "";
+  if (!clientSecret) return { ok: false, error: "missing_client_secret" };
+
+  const data = { issuer, clientId, clientSecret, autoCreate: input.autoCreate === true };
+  await prisma.kosmyBoardSettings.upsert({ where: { id: 1 }, create: { id: 1, ...data }, update: data });
+  clearDiscoveryCache();
+
+  let reachable = true;
+  try {
+    await discover(issuer);
+  } catch {
+    reachable = false;
+  }
+  return { ok: true, settings: { issuer, clientId, autoCreate: data.autoCreate, hasSecret: true }, reachable };
+}
+
+/** Turn Kosmy Board sign-in off (links on accounts are kept). */
+export async function disableKosmySettings(): Promise<void> {
+  await prisma.kosmyBoardSettings.deleteMany({});
+  clearDiscoveryCache();
 }
 
 export function flowCookieOptions(maxAge = FLOW_TTL_SECONDS) {

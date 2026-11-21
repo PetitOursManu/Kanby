@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
-import { badRequest, notFound } from "@/lib/validation";
+import { deleteUserAsAdmin } from "@/lib/admin/service";
 
 export const runtime = "nodejs";
 
@@ -10,10 +9,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const auth = await requireAdmin(req);
   if ("error" in auth) return auth.error;
 
-  if (params.id === auth.user.id) return badRequest("Vous ne pouvez pas supprimer votre propre compte");
-  const target = await prisma.user.findUnique({ where: { id: params.id }, select: { id: true } });
-  if (!target) return notFound("Utilisateur introuvable");
-
-  await prisma.user.delete({ where: { id: params.id } });
+  const result = await deleteUserAsAdmin(auth.user.id, params.id);
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   return NextResponse.json({ ok: true });
 }

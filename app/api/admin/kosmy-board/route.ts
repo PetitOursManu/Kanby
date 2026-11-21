@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
-import { clearDiscoveryCache, discover, normalizeIssuer } from "@/lib/kosmy-board/oidc";
+import { disableKosmySettings, saveKosmySettings, type SaveKosmyInput } from "@/lib/kosmy-board/server";
 
 export const runtime = "nodejs";
 
@@ -14,47 +13,24 @@ export async function PUT(req: NextRequest) {
   const auth = await requireAdmin(req);
   if ("error" in auth) return auth.error;
 
-  let body: { issuer?: string; clientId?: string; clientSecret?: string; autoCreate?: boolean };
+  let body: SaveKosmyInput;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Requête invalide" }, { status: 400 });
   }
+  if (!body || typeof body !== "object") return NextResponse.json({ error: "Requête invalide" }, { status: 400 });
 
-  const issuer = normalizeIssuer(body.issuer);
-  if (!issuer) return NextResponse.json({ error: "invalid_issuer" }, { status: 400 });
-  const clientId = (body.clientId ?? "").trim();
-  if (!clientId || clientId.length > 200) return NextResponse.json({ error: "invalid_client_id" }, { status: 400 });
-
-  const existing = await prisma.kosmyBoardSettings.findUnique({ where: { id: 1 } });
-  const newSecret = (body.clientSecret ?? "").trim();
-  if (newSecret.length > 500) return NextResponse.json({ error: "invalid_client_secret" }, { status: 400 });
-  const clientSecret = newSecret || existing?.clientSecret || "";
-  if (!clientSecret) return NextResponse.json({ error: "missing_client_secret" }, { status: 400 });
-
-  const data = { issuer, clientId, clientSecret, autoCreate: body.autoCreate === true };
-  await prisma.kosmyBoardSettings.upsert({ where: { id: 1 }, create: { id: 1, ...data }, update: data });
-  clearDiscoveryCache();
-
+  const result = await saveKosmySettings(body);
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
   // Tell the admin right away whether the issuer answers.
-  let reachable = true;
-  try {
-    await discover(issuer);
-  } catch {
-    reachable = false;
-  }
-
-  return NextResponse.json({
-    settings: { issuer, clientId, autoCreate: data.autoCreate, hasSecret: true },
-    reachable,
-  });
+  return NextResponse.json({ settings: result.settings, reachable: result.reachable });
 }
 
 /** DELETE /api/admin/kosmy-board — turn Kosmy Board sign-in off (links on accounts are kept). */
 export async function DELETE(req: NextRequest) {
   const auth = await requireAdmin(req);
   if ("error" in auth) return auth.error;
-  await prisma.kosmyBoardSettings.deleteMany({});
-  clearDiscoveryCache();
+  await disableKosmySettings();
   return NextResponse.json({ ok: true });
 }

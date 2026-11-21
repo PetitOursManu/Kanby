@@ -19,3 +19,12 @@ export async function registrationAllowed(): Promise<boolean> {
   }
   return registrationAllowedByEnv();
 }
+
+/** Open or close public sign-up (admin page and admin in Kosmy Board). */
+export async function setRegistrationAllowed(allowRegistration: boolean): Promise<void> {
+  await prisma.appSettings.upsert({
+    where: { id: 1 },
+    create: { id: 1, allowRegistration },
+    update: { allowRegistration },
+  });
+}

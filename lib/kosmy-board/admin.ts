@@ -15,7 +15,6 @@ import crypto from "node:crypto";
 import type { JWTVerifyGetKey } from "jose";
 import pkg from "@/package.json";
 import { getTranslator, translateApiError, type Locale, type Translator } from "@/lib/i18n";
-import { registrationAllowed } from "@/lib/registration";
 import { appBaseUrl, initiateLoginUri, redirectUri } from "@/lib/kosmy-board/oidc";
 import { AdminTokenError, verifyBoardAdminToken, type JtiCache } from "@/lib/kosmy-board/admin-token";
 import type { AdminResult, AdminStats, CreateUserInput, UpdateUserInput } from "@/lib/admin/service";
@@ -71,6 +70,9 @@ export type BoardAdminDeps = {
     kosmySettings(): Promise<KosmySettingsView>;
     saveKosmySettings(input: SaveKosmyInput): Promise<SaveKosmyResult>;
     disableKosmy(): Promise<void>;
+    /** Public sign-up: the admin page's setting, else ALLOW_REGISTRATION. */
+    registration(): Promise<boolean>;
+    setRegistration(open: boolean): Promise<void>;
   };
   /** Temporary passwords (overridable in tests). */
   generatePassword?: () => string;
@@ -297,7 +299,7 @@ const overview: SectionDef = {
     const admins = users.filter((u) => u.globalRole === "ADMIN").length;
     const inactive = users.filter((u) => !u.active).length;
     const team = boards.filter((b) => b.type === "TEAM").length;
-    const open = registrationAllowed();
+    const open = await deps.admin.registration();
     const blocks: Block[] = [];
     if (open) {
       blocks.push({ type: "notice", tone: "info", title: t("kbAdmin.overview.signupOpenTitle"), text: t("kbAdmin.overview.signupOpenText") });
@@ -331,10 +333,24 @@ const overview: SectionDef = {
           { label: t("kbAdmin.overview.node"), value: process.version },
         ],
       },
+      {
+        type: "actions",
+        title: t("admin.registration"),
+        items: [
+          open
+            ? { id: "close-signup", label: t("kbAdmin.overview.closeSignup"), description: t("admin.registrationOffHint") }
+            : { id: "open-signup", label: t("kbAdmin.overview.openSignup"), description: t("admin.registrationOnHint") },
+        ],
+      },
     );
     return { id: "overview", title: t("kbAdmin.section.overview"), description: t("kbAdmin.overview.description"), blocks };
   },
-  async act(_body, { t }) {
+  async act({ action }, { t }, deps) {
+    if (action === "open-signup" || action === "close-signup") {
+      const open = action === "open-signup";
+      await deps.admin.setRegistration(open);
+      return { message: t(open ? "admin.registrationOpened" : "admin.registrationClosed") };
+    }
     throw notFound(t);
   },
 };

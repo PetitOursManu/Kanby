@@ -12,7 +12,7 @@ import { SignJWT, createLocalJWKSet, exportJWK, generateKeyPair, type JWK } from
 type Row = Record<string, any>;
 
 const { db, fakePrisma } = vi.hoisted(() => {
-  const db = { users: [] as Row[], boards: [] as Row[], settings: null as Row | null, seq: 0 };
+  const db = { users: [] as Row[], boards: [] as Row[], settings: null as Row | null, app: null as Row | null, seq: 0 };
   const matches = (x: Row, where: Row) => Object.entries(where).every(([k, v]) => x[k] === v);
   const view = (u: Row, select?: Row) => {
     if (!select) return { ...u };
@@ -55,6 +55,12 @@ const { db, fakePrisma } = vi.hoisted(() => {
         }),
     },
     card: { count: async ({ where }: Row) => (where.completedAt === null ? 3 : 1) },
+    appSettings: {
+      findUnique: async () => db.app,
+      upsert: async ({ create, update }: Row) => {
+        db.app = db.app ? { ...db.app, ...update } : { ...create };
+      },
+    },
     kosmyBoardSettings: {
       findUnique: async () => db.settings,
       upsert: async ({ create, update }: Row) => {
@@ -338,6 +344,20 @@ describe("sections", () => {
 
 describe("actions", () => {
   const post = (section: string, body: unknown, lang = "fr") => call(`${ADMIN_PATH}/${section}`, { method: "POST", body, lang });
+
+  it("open / close sign-up, with the same setting as the admin page", async () => {
+    db.app = { id: 1, allowRegistration: true };
+    const before = await call(`${ADMIN_PATH}/overview`);
+    const acts = before.json.blocks.find((b: any) => b.type === "actions");
+    expect(acts.items.map((i: any) => i.id)).toEqual(["close-signup"]);
+    const r = await post("overview", { action: "close-signup" });
+    expect(r.status).toBe(200);
+    expect(db.app?.allowRegistration).toBe(false);
+    expect(r.json.section.blocks.find((b: any) => b.type === "actions").items[0].id).toBe("open-signup");
+    expect(r.json.section.blocks.some((b: any) => b.type === "notice")).toBe(false);
+    await post("overview", { action: "open-signup" });
+    expect(db.app?.allowRegistration).toBe(true);
+  });
 
   it("make-admin changes the role and returns the updated section", async () => {
     const r = await post("users", { action: "make-admin", row: "bob" });

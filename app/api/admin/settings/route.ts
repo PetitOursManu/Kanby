@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-guard";
-import { registrationAllowed, registrationAllowedByEnv } from "@/lib/registration";
+import { registrationAllowed, registrationAllowedByEnv, setRegistrationAllowed } from "@/lib/registration";
 import { badRequest, readJson } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -24,10 +23,6 @@ export async function PATCH(req: NextRequest) {
   const body = await readJson<{ allowRegistration: boolean }>(req);
   if (!body || typeof body.allowRegistration !== "boolean") return badRequest("allowRegistration requis");
 
-  await prisma.appSettings.upsert({
-    where: { id: 1 },
-    create: { id: 1, allowRegistration: body.allowRegistration },
-    update: { allowRegistration: body.allowRegistration },
-  });
+  await setRegistrationAllowed(body.allowRegistration);
   return NextResponse.json({ settings: await current() });
 }

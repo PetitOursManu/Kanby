@@ -2,7 +2,8 @@ import { AppShell } from "@/components/AppShell";
 import { getServerTranslator } from "@/lib/i18n/server";
 import { AdminPanel } from "./AdminPanel";
 import { requirePageUser } from "@/lib/auth/page";
-import { prisma } from "@/lib/prisma";
+import { getAdminStats, listAdminBoards, listAdminUsers } from "@/lib/admin/service";
+import { getKosmySettingsView } from "@/lib/kosmy-board/server";
 import { headers } from "next/headers";
 import { appBaseUrl, initiateLoginUri, redirectUri } from "@/lib/kosmy-board/oidc";
 import { registrationAllowed, registrationAllowedByEnv } from "@/lib/registration";
@@ -10,29 +11,11 @@ import { registrationAllowed, registrationAllowedByEnv } from "@/lib/registratio
 export default async function AdminPage() {
   const user = await requirePageUser({ path: "/admin", admin: true });
 
-  const [users, boards, stats, kosmyRow] = await Promise.all([
-    prisma.user.findMany({
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true, email: true, displayName: true, avatarUrl: true,
-        globalRole: true, active: true, createdAt: true,
-        _count: { select: { ownedBoards: true } },
-      },
-    }),
-    prisma.board.findMany({
-      orderBy: { updatedAt: "desc" },
-      include: {
-        owner: { select: { id: true, displayName: true, email: true } },
-        _count: { select: { cards: true, members: true } },
-      },
-    }),
-    Promise.all([
-      prisma.user.count(),
-      prisma.board.count(),
-      prisma.card.count({ where: { completedAt: null } }),
-      prisma.card.count({ where: { completedAt: { not: null } } }),
-    ]).then(([u, b, a, c]) => ({ users: u, boards: b, activeTasks: a, completedTasks: c })),
-    prisma.kosmyBoardSettings.findUnique({ where: { id: 1 } }),
+  const [users, boards, stats, kosmyView] = await Promise.all([
+    listAdminUsers(),
+    listAdminBoards(),
+    getAdminStats(),
+    getKosmySettingsView(),
   ]);
 
   // Kosmy Board sign-in settings. The client secret is never sent to the browser.
@@ -41,10 +24,7 @@ export default async function AdminPage() {
   const proto = h.get("x-forwarded-proto") || "http";
   const base = appBaseUrl(`${proto}://${host}`);
   const kosmy = {
-    issuer: kosmyRow?.issuer ?? "",
-    clientId: kosmyRow?.clientId ?? "",
-    autoCreate: kosmyRow?.autoCreate ?? false,
-    hasSecret: !!kosmyRow?.clientSecret,
+    ...kosmyView,
     base,
     redirectUri: redirectUri(base),
     loginUri: initiateLoginUri(base),

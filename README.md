@@ -23,7 +23,7 @@
 - [Installer avec Docker Compose](#installer-avec-docker-compose)
 - [Mise à jour](#mise-à-jour) · [Sauvegarde](#sauvegarde)
 - [Variables d'environnement](#variables-denvironnement)
-- [Administration](#administration) · [Kosmy Board](#se-connecter-avec-kosmy-board-optionnel)
+- [Administration](#administration) · [Kosmy Board](#se-connecter-avec-kosmy-board-optionnel) · [Admin dans Kosmy Board](#admin-dans-kosmy-board)
 - [API mobile & intégrations](#api-mobile--intégrations) · [Widget Dashy](#widget-dashy-optionnel)
 - [Tests](#tests) · [Développement](#développement-sans-docker) · [Stack](#stack-technique)
 
@@ -277,6 +277,28 @@ Sécurité : les comptes sont reliés par l'identifiant Kosmy Board (`sub`) uniq
 (non vérifié par le Board). La création automatique de compte à la première connexion est désactivée par
 défaut et ne donne jamais de droits d'administration. `APP_URL` doit être l'adresse saisie dans le Board.
 
+## Admin dans Kosmy Board
+
+Avec la connexion Kosmy Board réglée, l'administration de Kanby s'affiche aussi **dans le Board**
+(bouton « Admin » de l'instance), sans ouvrir Kanby :
+
+- **Vue d'ensemble** : statistiques (utilisateurs, tableaux, tâches) et informations sur l'instance ;
+- **Utilisateurs** : création (mot de passe temporaire affiché une seule fois), rôle admin,
+  réinitialisation du mot de passe, désactivation, suppression ;
+- **Tableaux** : la liste de tous les tableaux, avec un lien vers chacun ;
+- **Kosmy Board** : les réglages de la connexion (le secret client n'est jamais renvoyé).
+
+Prérequis : la [connexion avec Kosmy Board](#se-connecter-avec-kosmy-board-optionnel) est réglée,
+et le compte Kosmy Board de la personne est **relié** à un compte Kanby **administrateur** actif.
+Le Board dit seulement qui est la personne : les droits et les règles restent ceux de Kanby
+(mêmes vérifications que le menu **Admin**). Le serveur du Board doit pouvoir joindre Kanby à
+l'adresse saisie dans le Board.
+
+Le Board appelle `/api/kosmy-board/admin/**` avec un jeton signé à usage unique, valable 60 secondes.
+Protocole : [`kosmy.board-admin.v1`](https://github.com/PetitOursManu/Kosmy-Board/blob/main/docs/admin-api.md).
+Restent dans l'admin de Kanby : la recherche dans plus de 500 comptes ou tableaux et le choix
+manuel d'un mot de passe temporaire.
+
 ---
 
 ## API mobile & intégrations
@@ -300,13 +322,13 @@ dans **Dashy** ou tout autre tableau de bord : voir [`NOTES.md`](./NOTES.md).
 
 ## Tests
 
-Kanby a trois niveaux de tests (152 tests au total) :
+Kanby a trois niveaux de tests (188 tests au total) :
 
 ```bash
 # 1. Tests unitaires (aucun prérequis)
 npm test
 
-# 2. Tests d'API (65 tests) — serveur Kanby démarré + sa base PostgreSQL
+# 2. Tests d'API (75 tests) — serveur Kanby démarré + sa base PostgreSQL
 KANBY_TEST_URL=http://localhost:3000 DATABASE_URL=... JWT_SECRET=... npm run test:api
 
 # 3. Tests de l'interface dans un vrai navigateur (17 scénarios)

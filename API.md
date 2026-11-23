@@ -140,6 +140,10 @@ Login via API token (mobile / external clients). Does NOT set a cookie.
 
 **Response 401**: `{ "error": "Identifiants invalides" }`
 
+**Response 403**: `{ "error": "L'accès à l'API est désactivé pour votre compte" }` — an administrator
+turned API access off for this user (restriction set from Kosmy Board; never for administrators).
+Existing tokens of such a user are refused too (401).
+
 ```bash
 curl -X POST https://kanby.example.com/api/auth/token \
   -H "Content-Type: application/json" \
@@ -243,6 +247,8 @@ Generate a new API token.
 { "raw": "kbt_a1b2c3d4...", "token": { "id": "ck...", "label": "My mobile app", "prefix": "kbt_a1b2", "createdAt": "2026-06-27T..." } }
 ```
 
+**Response 403**: `{ "error": "L'accès à l'API est désactivé pour votre compte" }` (see `POST /api/auth/token`).
+
 ### DELETE /api/me/tokens/{id}
 
 Revoke an API token by ID.
@@ -308,6 +314,9 @@ Create a board. Creates 3 default columns (À faire / En cours / Terminé).
   }
 }
 ```
+
+**Response 403**: `{ "error": "Nombre maximal de tableaux atteint pour votre compte" }` — the user already owns
+as many boards as an administrator allowed (restriction set from Kosmy Board; never for administrators).
 
 ### GET /api/boards/{id}
 

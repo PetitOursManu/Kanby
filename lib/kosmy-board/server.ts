@@ -98,7 +98,7 @@ export function flowCookieOptions(maxAge = FLOW_TTL_SECONDS) {
  * sign in through Kosmy Board only. Unlinking requires the current password, so
  * such an account cannot be unlinked (and locked out) by mistake.
  */
-async function unusablePasswordHash(): Promise<string> {
+export async function unusablePasswordHash(): Promise<string> {
   return hashPassword(crypto.randomBytes(32).toString("base64url"));
 }
 

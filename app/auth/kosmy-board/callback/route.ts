@@ -14,6 +14,8 @@ import {
 } from "@/lib/kosmy-board/oidc";
 import { linkKosmyAccount, resolveKosmyAccount } from "@/lib/kosmy-board/accounts";
 import { flowCookieOptions, getKosmySettings, prismaAccountRepo } from "@/lib/kosmy-board/server";
+import { signInWithBoardAccess } from "@/lib/kosmy-board/users";
+import { prismaUsersStore } from "@/lib/kosmy-board/users-deps";
 import { redirectWithError } from "@/lib/kosmy-board/start";
 import { getSessionUserFromRequest, issueSession } from "@/lib/auth/session";
 import { rateLimitOr429 } from "@/lib/rate-limit";
@@ -25,6 +27,10 @@ export const dynamic = "force-dynamic";
  * GET /auth/kosmy-board/callback — return from Kosmy Board.
  * Checks state (single use) and iss, exchanges the code (client_secret_basic +
  * PKCE), fully verifies the ID token, then signs in or links the account.
+ *
+ * When the ID token carries `kosmy_board_access` (access managed by the Board,
+ * kosmy.board-users.v1), its role and restrictions are applied like a PUT and
+ * the account is created if needed; otherwise sign-in is unchanged.
  */
 export async function GET(req: NextRequest) {
   const limited = rateLimitOr429(req, "kosmy-callback", 30, 60);
@@ -77,7 +83,9 @@ export async function GET(req: NextRequest) {
 
     if (flow.mode === "link") return await finishLink(req, base, flow, claims.sub);
 
-    const result = await resolveKosmyAccount(claims, { autoCreate: settings.autoCreate }, prismaAccountRepo);
+    const result = claims.access
+      ? await signInWithBoardAccess({ ...claims, access: claims.access }, prismaUsersStore)
+      : await resolveKosmyAccount(claims, { autoCreate: settings.autoCreate }, prismaAccountRepo);
     if (!result.ok) return redirectWithError(base, "/login", result.error);
 
     await issueSession(result.user);

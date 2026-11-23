@@ -16,8 +16,11 @@ import { JtiCache } from "@/lib/kosmy-board/admin-token";
 import type { BoardAdminDeps } from "@/lib/kosmy-board/admin";
 import { registrationAllowed, setRegistrationAllowed } from "@/lib/registration";
 
-/** One per server process: a token is accepted only once. */
-const jti = new JtiCache();
+/**
+ * One per server process: a token is accepted only once. Shared with the
+ * users of kosmy.board-users.v1 (`users-deps.ts`), which use the same tokens.
+ */
+export const jti = new JtiCache();
 
 export const boardAdminDeps: BoardAdminDeps = {
   getSettings: getKosmySettings,

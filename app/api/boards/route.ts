@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-guard";
 import { getTranslator, parseLocale, LOCALE_COOKIE } from "@/lib/i18n";
 import { LIMITS, badRequest, readJson, text } from "@/lib/validation";
+import { boardLimit } from "@/lib/restrictions";
 
 export const runtime = "nodejs";
 
@@ -40,6 +41,12 @@ export async function POST(req: NextRequest) {
   const name = text(body.name, LIMITS.boardName, { required: true });
   if (name.error) return badRequest(name.error === "too_long" ? "Nom trop long" : "Nom requis");
   const type = body.type === "TEAM" ? "TEAM" : "PERSONAL";
+
+  // Restriction set by an administrator (from Kosmy Board): most boards owned.
+  const limit = boardLimit(auth.user);
+  if (limit !== null && (await prisma.board.count({ where: { ownerId: auth.user.id } })) >= limit) {
+    return NextResponse.json({ error: "Nombre maximal de tableaux atteint pour votre compte" }, { status: 403 });
+  }
 
   const t = getTranslator(parseLocale(req.cookies.get(LOCALE_COOKIE)?.value));
 

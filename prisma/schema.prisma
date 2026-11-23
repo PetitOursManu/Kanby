@@ -50,6 +50,12 @@ model User {
   kosmySub         String?    @unique
   /// Interface language ("fr" | "en"), used to localize notifications.
   locale           String?
+  /// Restrictions set by an administrator (Kosmy Board users, kosmy.board-users.v1).
+  /// They only apply to regular users (USER), never to administrators.
+  /// Most boards the user may own; null = no limit, 0 = cannot create boards.
+  maxBoards        Int?
+  /// May use API tokens (mobile API, widget). Off: tokens are refused and none can be created.
+  canUseApi        Boolean    @default(true)
   createdAt        DateTime   @default(now())
 
   ownedBoards      Board[]        @relation("BoardOwner")

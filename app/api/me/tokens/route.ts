@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth-guard";
 import { createApiToken } from "@/lib/auth/token";
 import { LIMITS, badRequest, readJson } from "@/lib/validation";
+import { mayUseApi } from "@/lib/restrictions";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await requireUser(req);
   if ("error" in auth) return auth.error;
+
+  if (!mayUseApi(auth.user)) return NextResponse.json({ error: "L'accès à l'API est désactivé pour votre compte" }, { status: 403 });
 
   const body = (await readJson<{ label: string }>(req)) ?? {};
   const label = (typeof body.label === "string" ? body.label.trim() : "").slice(0, LIMITS.tokenLabel) || "Sans nom";

@@ -361,6 +361,7 @@ export const fr: Record<string, string> = {
   "kosmy.error.already_linked": "Ce compte Kosmy Board est déjà relié à un autre compte Kanby.",
   "kosmy.error.session": "Votre session Kanby a changé pendant la liaison. Reconnectez-vous et recommencez.",
   "kosmy.error.generic": "La connexion avec Kosmy Board a échoué.",
+  "kosmy.error.access": "Kosmy Board a transmis un accès que Kanby ne reconnaît pas. Demandez à un administrateur du Board de resynchroniser votre accès.",
 
   "profile.kosmy.title": "Kosmy Board",
   "profile.kosmy.desc": "Connectez-vous à Kanby avec votre compte Kosmy Board, sans mot de passe propre à Kanby.",
@@ -534,6 +535,8 @@ export const fr: Record<string, string> = {
   "api.invalidRole": "Rôle invalide",
   "api.nothingToChange": "Rien à modifier",
 
+  "api.boardLimit": "Nombre maximal de tableaux atteint pour votre compte",
+  "api.apiDisabled": "L'accès à l'API est désactivé pour votre compte",
   "api.invalidActive": "active invalide",
 
   // Admin in Kosmy Board (/api/kosmy-board/admin, protocol kosmy.board-admin.v1)
@@ -612,4 +615,30 @@ export const fr: Record<string, string> = {
   "admin.registrationClosedBadge": "Fermées",
   "admin.registrationOpened": "Inscriptions ouvertes.",
   "admin.registrationClosed": "Inscriptions fermées.",
+
+  // Users managed by Kosmy Board (/api/kosmy-board/users, protocol kosmy.board-users.v1)
+  "kbUsers.role.admin": "Administrateur",
+  "kbUsers.role.adminDescription": "Gère Kanby : comptes, tous les tableaux, réglages. Aucune restriction.",
+  "kbUsers.role.member": "Utilisateur",
+  "kbUsers.role.memberDescription": "Crée ses tableaux et participe aux tableaux d'équipe où il est invité.",
+  "kbUsers.field.maxBoards": "Tableaux au plus",
+  "kbUsers.field.maxBoardsHelp": "Tableaux que la personne peut posséder. Vide : sans limite. 0 : aucun tableau à elle (elle peut toujours être invitée dans des tableaux d'équipe).",
+  "kbUsers.field.canUseApi": "Peut utiliser l'API",
+  "kbUsers.field.canUseApiHelp": "Jetons d'accès personnels (appli mobile, widget, scripts). Décoché : ses jetons sont refusés et elle ne peut pas en créer.",
+  "kbUsers.created": "Compte Kanby créé.",
+  "kbUsers.linked": "Compte Kanby existant relié par son adresse e-mail.",
+  "kbUsers.updated": "Compte Kanby mis à jour.",
+  "kbUsers.deactivated": "Compte Kanby désactivé : il ne peut plus se connecter, ses données restent.",
+  "kbUsers.error.notFound": "Compte inconnu.",
+  "kbUsers.error.role": "Rôle inconnu.",
+  "kbUsers.error.email": "Adresse e-mail invalide.",
+  "kbUsers.error.noEmail": "Une adresse e-mail est nécessaire pour créer le compte Kanby.",
+  "kbUsers.error.emailLinked": "Cette adresse e-mail appartient déjà à un compte Kanby relié à une autre personne du Board.",
+  "kbUsers.error.emailTaken": "Cette adresse e-mail est déjà utilisée par un autre compte Kanby.",
+  "kbUsers.error.selfDemote": "Vous ne pouvez pas vous retirer vos propres droits d'administration.",
+  "kbUsers.error.selfRemove": "Vous ne pouvez pas retirer votre propre accès.",
+  "kbUsers.error.lastAdmin": "Kanby doit garder au moins un administrateur actif.",
+  "kbUsers.error.values": "Restrictions illisibles.",
+  "kbUsers.error.maxBoards": "{label} : un nombre entier entre {min} et {max}, ou vide.",
+  "kbUsers.error.checkbox": "{label} : oui ou non.",
 };

@@ -23,7 +23,7 @@
 - [Installer avec Docker Compose](#installer-avec-docker-compose)
 - [Mise à jour](#mise-à-jour) · [Sauvegarde](#sauvegarde)
 - [Variables d'environnement](#variables-denvironnement)
-- [Administration](#administration) · [Kosmy Board](#se-connecter-avec-kosmy-board-optionnel) · [Admin dans Kosmy Board](#admin-dans-kosmy-board)
+- [Administration](#administration) · [Kosmy Board](#se-connecter-avec-kosmy-board-optionnel) · [Admin dans Kosmy Board](#admin-dans-kosmy-board) · [Utilisateurs gérés par Kosmy Board](#utilisateurs-gérés-par-kosmy-board)
 - [API mobile & intégrations](#api-mobile--intégrations) · [Widget Dashy](#widget-dashy-optionnel)
 - [Tests](#tests) · [Développement](#développement-sans-docker) · [Stack](#stack-technique)
 
@@ -298,6 +298,33 @@ Le Board appelle `/api/kosmy-board/admin/**` avec un jeton signé à usage uniqu
 Protocole : [`kosmy.board-admin.v1`](https://github.com/PetitOursManu/Kosmy-Board/blob/main/docs/admin-api.md).
 Restent dans l'admin de Kanby : la recherche dans plus de 500 comptes ou tableaux et le choix
 manuel d'un mot de passe temporaire.
+
+## Utilisateurs gérés par Kosmy Board
+
+Un administrateur du Board peut aussi donner (ou retirer) l'accès à Kanby depuis le Board, avec un
+**rôle** et des **restrictions** : le Board crée, met à jour ou désactive le compte Kanby de la personne.
+
+- **Rôles** : `Administrateur` (droits d'administration de Kanby) et `Utilisateur`.
+- **Restrictions** (utilisateurs seulement, jamais les administrateurs) :
+  - **Tableaux au plus** : nombre de tableaux que la personne peut posséder (vide : sans limite ;
+    0 : aucun, mais elle peut être invitée dans des tableaux d'équipe). Au-delà, la création est refusée ;
+  - **Peut utiliser l'API** : décoché, ses jetons d'API (appli mobile, widget) sont refusés et elle ne
+    peut pas en créer.
+- **Création** : compte relié au `sub` du Board, **sans mot de passe** (connexion par le Board).
+  Un compte Kanby existant **non relié** avec la même adresse e-mail est relié à la place
+  (seulement à la demande d'un administrateur, jamais à la connexion).
+- **Retrait de l'accès** : le compte est **désactivé** (ses données restent) : connexion par mot de passe
+  ou par le Board, sessions ouvertes, jetons d'API et admin dans le Board sont refusés. Redonner l'accès
+  le réactive.
+- **À la connexion** par le Board, le rôle et les restrictions transmis (`kosmy_board_access`) sont appliqués,
+  et le compte est créé s'il n'existe pas encore (même si la création automatique est désactivée).
+  Un compte désactivé reste désactivé.
+- Garde-fous : on ne peut ni se retirer ses propres droits d'administration, ni retirer son propre accès,
+  et Kanby garde toujours au moins un administrateur actif.
+
+Mêmes prérequis et même jeton que l'admin dans le Board (la personne qui agit doit être un administrateur
+Kanby actif). Points d'accès : `GET /api/kosmy-board/users`, `PUT` et `DELETE /api/kosmy-board/users/{sub}`.
+Protocole : [`kosmy.board-users.v1`](https://github.com/PetitOursManu/Kosmy-Board/blob/main/docs/users-api.md).
 
 ---
 

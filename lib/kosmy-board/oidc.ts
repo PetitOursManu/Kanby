@@ -257,6 +257,12 @@ export type KosmyClaims = {
   email?: string;
   preferred_username?: string;
   locale?: string;
+  /**
+   * `kosmy_board_access`: the role and restrictions given by a Board
+   * administrator (protocol kosmy.board-users.v1), when the Board manages
+   * this person's access. Checked by `signInWithBoardAccess`.
+   */
+  access?: { role: unknown; values?: unknown };
 };
 
 /** Full ID token check: RS256 signature (jwks_uri), iss, aud, exp, nonce. */
@@ -282,11 +288,15 @@ export async function verifyIdToken(
     throw new OidcError("token", "invalid ID token: missing sub");
   }
   const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+  const access = payload.kosmy_board_access;
   return {
     sub: payload.sub,
     name: str(payload.name),
     email: str(payload.email),
     preferred_username: str(payload.preferred_username),
     locale: str(payload.locale),
+    ...(access && typeof access === "object" && !Array.isArray(access)
+      ? { access: { role: (access as Record<string, unknown>).role, values: (access as Record<string, unknown>).values } }
+      : {}),
   };
 }

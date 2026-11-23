@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
 import { API_TOKEN_PREFIX_LEN } from "@/lib/constants";
+import { mayUseApi } from "@/lib/restrictions";
 
 /** Prefix used on all raw API tokens so they are easy to identify. */
 export const TOKEN_PREFIX = "kbt_";
@@ -46,8 +47,9 @@ export async function revokeApiToken(userId: string, tokenId: string): Promise<b
 
 /**
  * Resolve a raw API token (from a Bearer header or `?token=` query param) to
- * a user. Returns null if the token is missing, revoked, or the user is
- * inactive. Updates `lastUsedAt` on success.
+ * a user. Returns null if the token is missing, revoked, the user is
+ * inactive or may not use the API (restriction set by an administrator).
+ * Updates `lastUsedAt` on success.
  */
 export async function resolveApiTokenUser(rawToken: string | null | undefined): Promise<User | null> {
   if (!rawToken) return null;
@@ -59,7 +61,7 @@ export async function resolveApiTokenUser(rawToken: string | null | undefined): 
     include: { user: true },
   });
   if (!token || token.revokedAt) return null;
-  if (!token.user.active) return null;
+  if (!token.user.active || !mayUseApi(token.user)) return null;
 
   // Best-effort update of lastUsedAt; don't fail the request if it errors.
   prisma.apiToken

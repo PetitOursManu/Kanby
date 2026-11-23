@@ -361,6 +361,7 @@ export const en: Record<string, string> = {
   "kosmy.error.already_linked": "This Kosmy Board account is already linked to another Kanby account.",
   "kosmy.error.session": "Your Kanby session changed during linking. Sign in again and retry.",
   "kosmy.error.generic": "Signing in with Kosmy Board failed.",
+  "kosmy.error.access": "Kosmy Board sent an access Kanby does not recognize. Ask a Board administrator to resync your access.",
 
   "profile.kosmy.title": "Kosmy Board",
   "profile.kosmy.desc": "Sign in to Kanby with your Kosmy Board account, without a Kanby-specific password.",
@@ -534,6 +535,8 @@ export const en: Record<string, string> = {
   "api.invalidRole": "Invalid role",
   "api.nothingToChange": "Nothing to change",
 
+  "api.boardLimit": "You have reached the maximum number of boards for your account",
+  "api.apiDisabled": "API access is disabled for your account",
   "api.invalidActive": "Invalid active value",
 
   // Admin in Kosmy Board (/api/kosmy-board/admin, protocol kosmy.board-admin.v1)
@@ -612,4 +615,30 @@ export const en: Record<string, string> = {
   "admin.registrationClosedBadge": "Closed",
   "admin.registrationOpened": "Sign-up opened.",
   "admin.registrationClosed": "Sign-up closed.",
+
+  // Users managed by Kosmy Board (/api/kosmy-board/users, protocol kosmy.board-users.v1)
+  "kbUsers.role.admin": "Administrator",
+  "kbUsers.role.adminDescription": "Manages Kanby: accounts, all boards, settings. No restrictions.",
+  "kbUsers.role.member": "User",
+  "kbUsers.role.memberDescription": "Creates their own boards and works on the team boards they are invited to.",
+  "kbUsers.field.maxBoards": "Boards at most",
+  "kbUsers.field.maxBoardsHelp": "Boards this person may own. Empty: no limit. 0: none of their own (they can still be invited to team boards).",
+  "kbUsers.field.canUseApi": "May use the API",
+  "kbUsers.field.canUseApiHelp": "Personal access tokens (mobile app, widget, scripts). Unchecked: their tokens are refused and they cannot create any.",
+  "kbUsers.created": "Kanby account created.",
+  "kbUsers.linked": "Existing Kanby account linked by its email address.",
+  "kbUsers.updated": "Kanby account updated.",
+  "kbUsers.deactivated": "Kanby account deactivated: it can no longer sign in, its data stays.",
+  "kbUsers.error.notFound": "Unknown account.",
+  "kbUsers.error.role": "Unknown role.",
+  "kbUsers.error.email": "Invalid email address.",
+  "kbUsers.error.noEmail": "An email address is needed to create the Kanby account.",
+  "kbUsers.error.emailLinked": "This email address already belongs to a Kanby account linked to another Board person.",
+  "kbUsers.error.emailTaken": "This email address is already used by another Kanby account.",
+  "kbUsers.error.selfDemote": "You cannot remove your own administrator rights.",
+  "kbUsers.error.selfRemove": "You cannot remove your own access.",
+  "kbUsers.error.lastAdmin": "Kanby must keep at least one active administrator.",
+  "kbUsers.error.values": "Unreadable restrictions.",
+  "kbUsers.error.maxBoards": "{label}: a whole number between {min} and {max}, or empty.",
+  "kbUsers.error.checkbox": "{label}: yes or no.",
 };

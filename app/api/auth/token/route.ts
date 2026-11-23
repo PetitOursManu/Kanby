@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/auth/passwords";
 import { createApiToken } from "@/lib/auth/token";
 import { rateLimitOr429 } from "@/lib/rate-limit";
+import { mayUseApi } from "@/lib/restrictions";
 
 export const runtime = "nodejs";
 
@@ -43,6 +44,10 @@ export async function POST(req: NextRequest) {
   const ok = await verifyPassword(password, user.passwordHash);
   if (!ok) {
     return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
+  }
+
+  if (!mayUseApi(user)) {
+    return NextResponse.json({ error: "L'accès à l'API est désactivé pour votre compte" }, { status: 403 });
   }
 
   const label = (typeof body.label === "string" ? body.label.trim().slice(0, 80) : "") || "Mobile API";

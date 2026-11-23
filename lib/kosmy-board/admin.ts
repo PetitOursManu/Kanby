@@ -161,7 +161,20 @@ type Ctx = {
   base: string;
 };
 
-async function authenticate(req: Request, deps: BoardAdminDeps, t: Translator): Promise<{ me: BoardAdminAccount; htu: string }> {
+/** What checking the Board's token needs (shared by the admin and the users of kosmy.board-users.v1). */
+export type BoardAuthDeps = Pick<BoardAdminDeps, "getSettings" | "discover" | "findUserBySub" | "jti" | "now">;
+
+/**
+ * Check the Board's token (docs/admin-api.md, "Authentification") for this
+ * very request (method and path), then the person who acts: their `sub` must
+ * be linked to an active Kanby administrator. Returns that account and the
+ * `sub` of the token.
+ */
+export async function authenticateBoardRequest(
+  req: Request,
+  deps: BoardAuthDeps,
+  t: Translator,
+): Promise<{ me: BoardAdminAccount; sub: string; htu: string }> {
   const invalid = (message = t("kbAdmin.error.token")) => new BoardAdminError(401, "invalid_token", message);
 
   const m = /^Bearer\s+([\w-]+\.[\w-]+\.[\w-]+)$/i.exec(req.headers.get("authorization") ?? "");
@@ -203,7 +216,7 @@ async function authenticate(req: Request, deps: BoardAdminDeps, t: Translator): 
   if (!me) throw new BoardAdminError(403, "not_linked", t("kbAdmin.error.notLinked"));
   if (!me.active) throw new BoardAdminError(403, "forbidden", t("kbAdmin.error.inactive"));
   if (me.globalRole !== "ADMIN") throw new BoardAdminError(403, "forbidden", t("kbAdmin.error.forbidden"));
-  return { me, htu: claims.htu };
+  return { me, sub: claims.sub, htu: claims.htu };
 }
 
 async function readBody(req: Request, t: Translator): Promise<ActionBody> {
@@ -234,7 +247,7 @@ export async function handleBoardAdmin(req: Request, section: string | null, dep
   const locale = localeFromAcceptLanguage(req.headers.get("accept-language"));
   const t = getTranslator(locale);
   try {
-    const { me, htu } = await authenticate(req, deps, t);
+    const { me, htu } = await authenticateBoardRequest(req, deps, t);
     const ctx: Ctx = { me, t, locale, base: appBaseUrl(new URL(htu).origin) };
 
     if (section === null) {

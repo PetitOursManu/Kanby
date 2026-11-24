@@ -128,6 +128,7 @@ export default async function HelpPage() {
             <li>{t("help.calendarCreate")}</li>
             <li>{t("help.calendarShared")}</li>
             <li>{t("help.calendarNav")}</li>
+            <li>{t("help.calendarMove")}</li>
           </ul>
         </Section>
 

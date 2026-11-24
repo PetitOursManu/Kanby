@@ -42,7 +42,9 @@
   un clic un Kanban par jour ou par semaine. Il se nomme tout seul
   (« Elisa30 — Mardi 24 novembre 2026 », « Elisa30 — Semaine 48 · 23 → 29 nov.
   2026 »), reprend les colonnes et étiquettes du tableau et partage ses membres.
-  Flèches ‹ › pour passer au jour (ou à la semaine) suivant
+  Flèches ‹ › pour passer au jour (ou à la semaine) suivant. Un Kanban se
+  **déplace** vers un autre jour en le glissant dans le calendrier, ou en
+  cliquant sur sa date en haut du Kanban (échange possible si le jour est pris)
 - **Glisser-déposer** à la souris, au doigt (appui long) et au clavier
   (Espace pour saisir, flèches, Espace pour déposer)
 - **Filtre** des cartes (touche `/`), filtre « Mes cartes »

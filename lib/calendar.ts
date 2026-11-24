@@ -117,7 +117,31 @@ export function periodBoardName(
   locale: Locale,
   weekLabel: (week: number) => string,
 ): string {
-  const suffix =
+  return `${parentName}${periodSuffix(period, start, locale, weekLabel)}`;
+}
+
+/** The date part of an automatic name: " — Lundi 24 novembre 2026". */
+export function periodSuffix(period: Period, start: Date, locale: Locale, weekLabel: (week: number) => string): string {
+  const text =
     period === "WEEK" ? `${weekLabel(isoWeek(start).week)} · ${formatWeekRange(start, locale)}` : formatLongDay(start, locale);
-  return `${parentName} — ${suffix}`;
+  return ` — ${text}`;
+}
+
+/**
+ * Name of a calendar board moved from `from` to `to`: the date at the end of
+ * its automatic name is updated (in the language it was written in), the
+ * rest is kept. A name without the automatic date is left unchanged.
+ */
+export function movedBoardName(
+  name: string,
+  period: Period,
+  from: Date,
+  to: Date,
+  weekLabels: Record<Locale, (week: number) => string>,
+): string {
+  for (const locale of Object.keys(weekLabels) as Locale[]) {
+    const old = periodSuffix(period, from, locale, weekLabels[locale]);
+    if (name.endsWith(old)) return name.slice(0, name.length - old.length) + periodSuffix(period, to, locale, weekLabels[locale]);
+  }
+  return name;
 }

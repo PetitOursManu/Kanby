@@ -7,6 +7,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Eye, Loader2, LogOut, MoreHori
 import { Kanban } from "@/components/board/Kanban";
 import { CardModal } from "@/components/board/CardModal";
 import { LabelsDialog, MembersDialog, NameDialog } from "@/components/board/BoardDialogs";
+import { MoveDateDialog } from "@/components/board/MoveDateDialog";
 import { ConfettiOnDoneDrop } from "@/components/ConfettiOnDoneDrop";
 import { Avatar } from "@/components/Avatar";
 import { Menu, MenuItem, MenuSeparator } from "@/components/Menu";
@@ -15,7 +16,7 @@ import { useToast } from "@/components/Toast";
 import { apiDelete, apiPatch, apiPost } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
-import { addDays, dayKey, parseDay } from "@/lib/calendar";
+import { addDays, dayKey, formatDate, formatWeekRange, isoWeek, parseDay } from "@/lib/calendar";
 import type { BoardData, CardRow, ColumnRow, CurrentUser, MemberRow } from "@/types/api";
 import type { Label } from "@prisma/client";
 
@@ -38,7 +39,7 @@ export function BoardView({
   /** Number of day / week boards in this board's calendar. */
   calendarCount?: number;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const toast = useToast();
   const confirm = useConfirm();
   const router = useRouter();
@@ -52,7 +53,7 @@ export function BoardView({
   const [openCardId, setOpenCardId] = useState<string | null>(searchParams.get("card"));
   const [query, setQuery] = useState("");
   const [mine, setMine] = useState(false);
-  const [dialog, setDialog] = useState<null | "members" | "labels" | "rename" | "column">(null);
+  const [dialog, setDialog] = useState<null | "members" | "labels" | "rename" | "column" | "date">(null);
   const filterRef = useRef<HTMLInputElement>(null);
 
   const isTeam = type === "TEAM";
@@ -60,6 +61,12 @@ export function BoardView({
     ? `/boards/${calendar.parentId}/calendar?view=${calendar.period === "WEEK" ? "week" : "month"}&date=${calendar.date}`
     : `/boards/${board.id}/calendar`;
   const [stepping, setStepping] = useState<-1 | 1 | null>(null);
+  const calendarDate = calendar ? parseDay(calendar.date) : null;
+  const dateLabel = !calendar || !calendarDate
+    ? ""
+    : calendar.period === "WEEK"
+      ? `${t("calendar.weekShort", { week: isoWeek(calendarDate).week })} · ${formatWeekRange(calendarDate, locale)}`
+      : formatDate(calendarDate, locale, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 
   /** Go to the previous / next day (or week), creating its board if needed. */
   async function step(dir: -1 | 1) {
@@ -314,6 +321,9 @@ export function BoardView({
 
         {calendar ? (
           <div className="flex items-center gap-1">
+            <Link href={calendarHref} className="icon-btn border border-line" title={t("calendar.backToCalendar")} aria-label={t("calendar.backToCalendar")}>
+              <CalendarDays size={15} />
+            </Link>
             {canEdit && (
               <button
                 type="button"
@@ -326,9 +336,19 @@ export function BoardView({
                 {stepping === -1 ? <Loader2 size={15} className="animate-spin" /> : <ChevronLeft size={16} />}
               </button>
             )}
-            <Link href={calendarHref} className="btn-secondary btn-sm" title={t("calendar.backToCalendar")}>
-              <CalendarDays size={14} /> <span className="hidden sm:inline">{t("calendar.title")}</span>
-            </Link>
+            {canEdit ? (
+              <button
+                type="button"
+                onClick={() => setDialog("date")}
+                className="btn-secondary btn-sm"
+                title={t("calendar.changeDate")}
+              >
+                <span className="first-letter:uppercase">{dateLabel}</span>
+                <Pencil size={12} className="text-faint" />
+              </button>
+            ) : (
+              <span className="px-1 text-[13px] font-medium text-fg first-letter:uppercase">{dateLabel}</span>
+            )}
             {canEdit && (
               <button
                 type="button"
@@ -540,6 +560,19 @@ export function BoardView({
           setColumns((cols) => cols.map((c) => ({ ...c, cards: c.cards.map((x) => ({ ...x, labels: x.labels.filter((l) => l.label.id !== id) })) })));
         }}
       />
+      {calendar && (
+        <MoveDateDialog
+          open={dialog === "date"}
+          onClose={() => setDialog(null)}
+          boardId={board.id}
+          period={calendar.period}
+          date={calendar.date}
+          onMoved={(moved) => {
+            setName(moved.name);
+            router.refresh();
+          }}
+        />
+      )}
       <NameDialog
         open={dialog === "rename"}
         onClose={() => setDialog(null)}

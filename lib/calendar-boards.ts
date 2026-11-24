@@ -11,8 +11,8 @@
 import { Prisma, type Board } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { LIMITS } from "@/lib/validation";
-import { dayKey, periodBoardName, periodStart, type Period } from "@/lib/calendar";
-import type { Locale, Translator } from "@/lib/i18n";
+import { dayKey, movedBoardName, periodBoardName, periodStart, type Period } from "@/lib/calendar";
+import { getTranslator, LOCALES, type Locale, type Translator } from "@/lib/i18n";
 
 /** The board whose calendar `board` belongs to (itself for a regular board). */
 export const calendarRootId = (board: Pick<Board, "id" | "parentId">) => board.parentId ?? board.id;
@@ -129,4 +129,56 @@ export async function listCalendarBoards(parentId: string, from: Date, to: Date,
     doneCount: b.cards.filter((c) => c.completedAt).length,
     cards: b.cards.slice(0, previewCards).map((c) => ({ id: c.id, title: c.title, done: c.completedAt !== null })),
   }));
+}
+
+const weekLabels = Object.fromEntries(
+  LOCALES.map((l) => [l, (week: number) => getTranslator(l)("calendar.weekN", { week })]),
+) as Record<Locale, (week: number) => string>;
+
+export type RescheduleResult =
+  | { ok: true; board: Board; swapped: Board | null }
+  | { ok: false; conflict: Pick<Board, "id" | "name"> };
+
+/**
+ * Move a day / week board to the period containing `date` (any day of the
+ * week for a week board). The date in its automatic name follows.
+ *
+ * When that period already has a board: with `swap`, the two boards trade
+ * places; without it, nothing changes and the other board is returned as
+ * `conflict`.
+ */
+export async function rescheduleCalendarBoard(board: Board, date: Date, swap: boolean): Promise<RescheduleResult> {
+  if (!board.parentId || !board.period || !board.periodStart) throw new Error("not a calendar board");
+  const period = board.period;
+  const from = board.periodStart;
+  const to = periodStart(period, date);
+  if (to.getTime() === from.getTime()) return { ok: true, board, swapped: null };
+
+  const other = await prisma.board.findUnique({
+    where: { parentId_period_periodStart: { parentId: board.parentId, period, periodStart: to } },
+  });
+  if (other && !swap) return { ok: false, conflict: { id: other.id, name: other.name } };
+
+  const rename = (b: Board, a: Date, z: Date) => movedBoardName(b.name, period, a, z, weekLabels);
+  try {
+    return await prisma.$transaction(async (tx) => {
+      // Free the target day first: (parent, period, day) is unique.
+      if (other) await tx.board.update({ where: { id: other.id }, data: { periodStart: null } });
+      const moved = await tx.board.update({ where: { id: board.id }, data: { periodStart: to, name: rename(board, from, to) } });
+      const swapped = other
+        ? await tx.board.update({ where: { id: other.id }, data: { periodStart: from, name: rename(other, to, from) } })
+        : null;
+      return { ok: true as const, board: moved, swapped };
+    });
+  } catch (e) {
+    // Someone created a board on that day at the same moment.
+    if (isUniqueViolation(e)) {
+      const taken = await prisma.board.findUnique({
+        where: { parentId_period_periodStart: { parentId: board.parentId, period, periodStart: to } },
+        select: { id: true, name: true },
+      });
+      if (taken) return { ok: false, conflict: taken };
+    }
+    throw e;
+  }
 }

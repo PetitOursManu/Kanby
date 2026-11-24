@@ -135,4 +135,64 @@ describe("calendar (one board per day / per week)", () => {
     expect((await api(`/api/boards/${board.id}`, { as: owner, method: "DELETE" })).status).toBe(200);
     expect(await prisma.board.findUnique({ where: { id: day.id } })).toBeNull();
   });
+
+  it("moves a day board to another day, renaming it", async () => {
+    const owner = await createUser();
+    const { board } = await createBoard(owner, "PERSONAL", "Elisa30");
+    const day = (await open(owner, board.id, "DAY", "2026-11-24")).json.board;
+    const cols = (await api(`/api/boards/${day.id}`, { as: owner })).json.board.columns;
+    await createCard(owner, cols[0].id, "Keep me");
+
+    const r = await api(`/api/boards/${day.id}/reschedule`, { as: owner, body: { date: "2026-12-03" } });
+    expect(r.status).toBe(200);
+    expect(r.json.board.id).toBe(day.id);
+    expect(r.json.board.name).toBe("Elisa30 — Jeudi 3 décembre 2026");
+    expect(r.json.board.periodStart.slice(0, 10)).toBe("2026-12-03");
+    expect(r.json.swapped).toBeNull();
+    expect(await prisma.card.count({ where: { boardId: day.id } })).toBe(1);
+
+    // The old day is free again.
+    expect((await open(owner, board.id, "DAY", "2026-11-24")).status).toBe(201);
+  });
+
+  it("refuses a taken day (409) unless asked to swap", async () => {
+    const owner = await createUser();
+    const { board } = await createBoard(owner, "PERSONAL", "Elisa30");
+    const a = (await open(owner, board.id, "DAY", "2026-11-24")).json.board;
+    const b = (await open(owner, board.id, "DAY", "2026-11-25")).json.board;
+    await api(`/api/boards/${b.id}`, { as: owner, method: "PATCH", body: { name: "Soirée spéciale" } });
+
+    const refused = await api(`/api/boards/${a.id}/reschedule`, { as: owner, body: { date: "2026-11-25" } });
+    expect(refused.status).toBe(409);
+    expect(refused.json.conflict).toEqual({ id: b.id, name: "Soirée spéciale" });
+
+    const r = await api(`/api/boards/${a.id}/reschedule`, { as: owner, body: { date: "2026-11-25", swap: true } });
+    expect(r.status).toBe(200);
+    expect(r.json.board.name).toBe("Elisa30 — Mercredi 25 novembre 2026");
+    expect(r.json.swapped.id).toBe(b.id);
+    expect(r.json.swapped.name).toBe("Soirée spéciale"); // custom name kept
+    const after = await prisma.board.findMany({ where: { parentId: board.id }, orderBy: { periodStart: "asc" } });
+    expect(after.map((x) => x.id)).toEqual([b.id, a.id]);
+  });
+
+  it("moves week boards by week, and checks access and input", async () => {
+    const owner = await createUser();
+    const member = await createUser();
+    const outsider = await createUser();
+    const { board } = await createBoard(owner, "TEAM", "Elisa30");
+    await addMember(owner, board.id, member);
+    const w = (await open(owner, board.id, "WEEK", "2026-11-23")).json.board;
+
+    // Any day of the target week; a member may move it.
+    const r = await api(`/api/boards/${w.id}/reschedule`, { as: member, body: { date: "2026-12-04" } });
+    expect(r.status).toBe(200);
+    expect(r.json.board.periodStart.slice(0, 10)).toBe("2026-11-30");
+    expect(r.json.board.name).toBe("Elisa30 — Semaine 49 · 30 nov. → 6 déc. 2026");
+    // Same week: nothing to do.
+    expect((await api(`/api/boards/${w.id}/reschedule`, { as: owner, body: { date: "2026-12-01" } })).status).toBe(200);
+
+    expect((await api(`/api/boards/${w.id}/reschedule`, { as: outsider, body: { date: "2026-12-10" } })).status).toBe(403);
+    expect((await api(`/api/boards/${w.id}/reschedule`, { as: owner, body: { date: "2026-13-01" } })).status).toBe(400);
+    expect((await api(`/api/boards/${board.id}/reschedule`, { as: owner, body: { date: "2026-12-10" } })).status).toBe(400);
+  });
 });

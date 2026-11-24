@@ -5,6 +5,7 @@ import {
   formatWeekRange,
   isoWeek,
   monthGrid,
+  movedBoardName,
   parseDay,
   periodBoardName,
   periodStart,
@@ -60,5 +61,28 @@ describe("calendar dates", () => {
     expect(formatWeekRange(d("2026-11-30"), "fr")).toBe("30 nov. → 6 déc. 2026");
     expect(formatWeekRange(d("2025-12-29"), "fr")).toBe("29 déc. 2025 → 4 janv. 2026");
     expect(dayKey(addDays(d("2026-12-31"), 1))).toBe("2027-01-01");
+  });
+});
+
+describe("moved board names", () => {
+  const labels = { fr: (n: number) => `Semaine ${n}`, en: (n: number) => `Week ${n}` };
+
+  it("updates the date at the end of an automatic name, in its language", () => {
+    expect(movedBoardName("Elisa30 — Mardi 24 novembre 2026", "DAY", d("2026-11-24"), d("2026-12-01"), labels)).toBe(
+      "Elisa30 — Mardi 1 décembre 2026",
+    );
+    expect(movedBoardName("Elisa30 — Tuesday, 24 November 2026", "DAY", d("2026-11-24"), d("2026-11-25"), labels)).toBe(
+      "Elisa30 — Wednesday, 25 November 2026",
+    );
+    expect(movedBoardName("Elisa30 — Semaine 48 · 23 → 29 nov. 2026", "WEEK", d("2026-11-23"), d("2026-11-30"), labels)).toBe(
+      "Elisa30 — Semaine 49 · 30 nov. → 6 déc. 2026",
+    );
+  });
+
+  it("keeps the prefix even if the main board was renamed, and leaves custom names alone", () => {
+    expect(movedBoardName("Ancien nom — Mardi 24 novembre 2026", "DAY", d("2026-11-24"), d("2026-11-26"), labels)).toBe(
+      "Ancien nom — Jeudi 26 novembre 2026",
+    );
+    expect(movedBoardName("Soirée spéciale", "DAY", d("2026-11-24"), d("2026-11-26"), labels)).toBe("Soirée spéciale");
   });
 });

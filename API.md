@@ -443,6 +443,28 @@ date of the week can be given for `WEEK`.
 Errors: 400 for an invalid period / date, or when `{id}` is itself a day /
 week board.
 
+### POST /api/boards/{id}/reschedule
+
+Move a day / week board (`{id}`) to another day / week. For a week board, any
+day of the target week can be given. The date at the end of its automatic name
+follows ("Elisa30 — Mardi 24 novembre 2026" → "Elisa30 — Jeudi 3 décembre
+2026"); a name changed by hand is kept. Cards, columns and members don't change.
+
+**Auth**: token or session (board member)
+
+```json
+{ "date": "2026-12-03", "swap": false }
+```
+
+**Response 200**: `{ "board": { ... }, "swapped": null }`
+
+When the target day already has a board: **409**
+`{ "error": "Ce jour a déjà un Kanban", "conflict": { "id": "ck...", "name": "..." } }`.
+Send `"swap": true` to exchange the two boards; `swapped` is then the other
+board, now on the original day.
+
+Errors: 400 for an invalid date, or when `{id}` is not a day / week board.
+
 ---
 
 ## Board Members

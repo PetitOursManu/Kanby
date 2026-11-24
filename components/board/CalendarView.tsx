@@ -1,10 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, KanbanSquare, Loader2, Plus } from "lucide-react";
+import {
+  DndContext,
+  DragOverlay,
+  MouseSensor,
+  TouchSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import { CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, GripVertical, KanbanSquare, Loader2, Plus } from "lucide-react";
 import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Confirm";
+import { rescheduleBoard } from "@/components/board/reschedule";
 import { apiPost } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
@@ -47,10 +61,21 @@ export function CalendarView({
   const { t, locale } = useI18n();
   const toast = useToast();
   const router = useRouter();
+  const confirm = useConfirm();
   const [pending, setPending] = useState<string | null>(null);
+  // Local copy, so a drag & drop shows at once (the server's answer refreshes it).
+  const [items, setItems] = useState(entries);
+  useEffect(() => setItems(entries), [entries]);
+  const [dragged, setDragged] = useState<CalendarEntry | null>(null);
+  const dragging = useRef(false);
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+  );
 
   const current = parseDay(date)!;
-  const byKey = new Map(entries.map((e) => [`${e.period}:${e.date}`, e]));
+  const byKey = new Map(items.map((e) => [`${e.period}:${e.date}`, e]));
   const entryFor = (period: Period, d: Date) => byKey.get(`${period}:${dayKey(d)}`);
 
   const href = (v: View, d: Date) => `/boards/${boardId}/calendar?view=${v}&date=${dayKey(d)}`;
@@ -75,7 +100,53 @@ export function CalendarView({
     }
   }
 
-  const common = { entryFor, open, pending, canEdit, today };
+  const periodLabel = (period: Period, key: string) =>
+    period === "WEEK" ? t("calendar.weekN", { week: isoWeek(parseDay(key)!).week }) : formatLongDay(parseDay(key)!, locale);
+
+  /** Move a day / week board to another day / week (swapping with the board already there). */
+  async function move(entry: CalendarEntry, target: string) {
+    if (entry.date === target) return;
+    const askSwap = (name?: string) =>
+      confirm({
+        title: t("calendar.swapTitle", { date: periodLabel(entry.period, target) }),
+        message: name ? t("calendar.swapHint", { name }) : t("calendar.swapHintUnknown"),
+        confirm: t("calendar.swap"),
+      });
+    const other = items.find((e) => e.period === entry.period && e.date === target);
+    if (other && !(await askSwap(other.name))) return;
+
+    const before = items;
+    setItems((list) =>
+      list.map((e) => (e.id === entry.id ? { ...e, date: target } : other && e.id === other.id ? { ...e, date: entry.date } : e)),
+    );
+    try {
+      const done = await rescheduleBoard(entry.id, target, () => askSwap(), !!other);
+      if (!done) {
+        setItems(before);
+        return;
+      }
+      toast.success(t(done.swapped ? "calendar.swapped" : "calendar.moved", { date: periodLabel(entry.period, target) }));
+      router.refresh();
+    } catch (e) {
+      setItems(before);
+      toast.error(e);
+    }
+  }
+
+  function onDragStart(e: DragStartEvent) {
+    dragging.current = true;
+    setDragged((e.active.data.current?.entry as CalendarEntry) ?? null);
+  }
+  function onDragEnd(e: DragEndEvent) {
+    setDragged(null);
+    // The click that ends a drag must not open the board.
+    setTimeout(() => (dragging.current = false), 0);
+    const entry = e.active.data.current?.entry as CalendarEntry | undefined;
+    const target = e.over?.data.current as { period: Period; date: string } | undefined;
+    if (entry && target && target.period === entry.period) void move(entry, target.date);
+  }
+
+  const common = { entryFor, open, pending, canEdit, today, wasDragging: () => dragging.current };
 
   return (
     <div className="space-y-5">
@@ -118,9 +189,31 @@ export function CalendarView({
         </div>
       </div>
 
-      <p className="text-xs text-muted">{canEdit ? t("calendar.hint") : t("calendar.readOnlyHint")}</p>
+      <p className="text-xs text-muted">{canEdit ? `${t("calendar.hint")} ${t("calendar.dragHint")}` : t("calendar.readOnlyHint")}</p>
 
-      {view === "month" ? <MonthGrid current={current} weekHref={(d) => href("week", d)} {...common} /> : <WeekList monday={monday} {...common} />}
+      <DndContext
+        sensors={sensors}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+        onDragCancel={() => {
+          setDragged(null);
+          setTimeout(() => (dragging.current = false), 0);
+        }}
+        accessibility={{ screenReaderInstructions: { draggable: t("calendar.dragHint") } }}
+      >
+        {view === "month" ? <MonthGrid current={current} weekHref={(d) => href("week", d)} {...common} /> : <WeekList monday={monday} {...common} />}
+        <DragOverlay dropAnimation={null}>
+          {dragged && (
+            <div className="flex w-max max-w-[16rem] cursor-grabbing items-center gap-1.5 rounded-lg border border-accent bg-surface px-2.5 py-1.5 text-xs font-medium text-fg shadow-lg">
+              <KanbanSquare size={13} className="shrink-0 text-accent-fg" />
+              <span className="truncate">{periodLabel(dragged.period, dragged.date)}</span>
+              <span className="shrink-0 tabular-nums text-muted">
+                {dragged.doneCount}/{dragged.cardsCount}
+              </span>
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
     </div>
   );
 }
@@ -131,7 +224,96 @@ type CommonProps = {
   pending: string | null;
   canEdit: boolean;
   today: string;
+  /** True right after a drag: the click that ends it must not open the board. */
+  wasDragging: () => boolean;
 };
+
+/** A day or a week a board can be dropped on (only a board of the same kind). */
+function DropZone({
+  period,
+  date,
+  className,
+  overClassName,
+  children,
+}: {
+  period: Period;
+  date: string;
+  className?: string;
+  overClassName: string;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver, active } = useDroppable({ id: `${period}:${date}`, data: { period, date } });
+  const accepts = (active?.data.current?.entry as CalendarEntry | undefined)?.period === period;
+  return (
+    <div ref={setNodeRef} className={cn(className, isOver && accepts && overClassName)}>
+      {children}
+    </div>
+  );
+}
+
+/** Drag props for a board of the calendar (a link keeps its role and focus). */
+function useEntryDrag(entry: CalendarEntry, enabled: boolean) {
+  const { setNodeRef, listeners, attributes, isDragging } = useDraggable({ id: `board:${entry.id}`, data: { entry }, disabled: !enabled });
+  const { role: _role, tabIndex: _tabIndex, ...aria } = attributes;
+  return { ref: setNodeRef, props: enabled ? { ...listeners, ...aria } : {}, isDragging };
+}
+
+/** The board of a day in the month grid: opens it on click, moves it on drag. */
+function DayEntry({ entry, label, canEdit, wasDragging }: { entry: CalendarEntry; label: string; canEdit: boolean; wasDragging: () => boolean }) {
+  const { t } = useI18n();
+  const drag = useEntryDrag(entry, canEdit);
+  return (
+    <Link
+      ref={drag.ref}
+      {...drag.props}
+      href={`/boards/${entry.id}`}
+      draggable={false}
+      onClick={(e) => wasDragging() && e.preventDefault()}
+      className={cn(
+        "absolute inset-x-1 bottom-1 top-8 flex touch-manipulation select-none flex-col justify-end rounded-md border border-accent/30 bg-accent-soft p-1 text-accent-fg transition-colors [-webkit-touch-callout:none] hover:border-accent sm:p-1.5",
+        canEdit && "cursor-grab",
+        drag.isDragging && "opacity-40",
+      )}
+      title={t("calendar.openDay", { date: label })}
+      aria-label={t("calendar.openDay", { date: label })}
+    >
+      <span className="flex items-center gap-1 text-[11px] font-medium">
+        <KanbanSquare size={12} className="shrink-0" />
+        <span className="hidden tabular-nums sm:inline">
+          {entry.cardsCount ? t("calendar.progress", { done: entry.doneCount, total: entry.cardsCount }) : t("calendar.emptyBoard")}
+        </span>
+      </span>
+      {entry.cardsCount > 0 && <Progress entry={entry} className="mt-1 hidden sm:block" />}
+    </Link>
+  );
+}
+
+/** The board of a week, in the week-number column of the month grid. */
+function WeekEntry({ entry, week, canEdit, wasDragging }: { entry: CalendarEntry; week: number; canEdit: boolean; wasDragging: () => boolean }) {
+  const { t } = useI18n();
+  const drag = useEntryDrag(entry, canEdit);
+  return (
+    <Link
+      ref={drag.ref}
+      {...drag.props}
+      href={`/boards/${entry.id}`}
+      draggable={false}
+      onClick={(e) => wasDragging() && e.preventDefault()}
+      className={cn(
+        "flex w-full touch-manipulation select-none flex-col items-center rounded-md bg-accent-soft px-1 py-1 text-[11px] font-semibold text-accent-fg [-webkit-touch-callout:none] hover:bg-accent/20",
+        canEdit && "cursor-grab",
+        drag.isDragging && "opacity-40",
+      )}
+      title={t("calendar.openWeek", { week })}
+      aria-label={t("calendar.openWeek", { week })}
+    >
+      {t("calendar.weekShort", { week })}
+      <span className="hidden text-[10px] font-medium tabular-nums sm:block">
+        {entry.doneCount}/{entry.cardsCount}
+      </span>
+    </Link>
+  );
+}
 
 function Progress({ entry, className }: { entry: CalendarEntry; className?: string }) {
   const pct = entry.cardsCount ? Math.round((entry.doneCount / entry.cardsCount) * 100) : 0;
@@ -144,7 +326,16 @@ function Progress({ entry, className }: { entry: CalendarEntry; className?: stri
 
 // ---------------------------------------------------------------- Month view
 
-function MonthGrid({ current, weekHref, entryFor, open, pending, canEdit, today }: CommonProps & { current: Date; weekHref: (d: Date) => string }) {
+function MonthGrid({
+  current,
+  weekHref,
+  entryFor,
+  open,
+  pending,
+  canEdit,
+  today,
+  wasDragging,
+}: CommonProps & { current: Date; weekHref: (d: Date) => string }) {
   const { t, locale } = useI18n();
   const weeks = monthGrid(current);
   const month = current.getUTCMonth();
@@ -168,19 +359,14 @@ function MonthGrid({ current, weekHref, entryFor, open, pending, canEdit, today 
         return (
           <div key={dayKey(monday)} className="grid grid-cols-[2.25rem_repeat(7,minmax(0,1fr))] border-b border-line last:border-b-0 sm:grid-cols-[3.5rem_repeat(7,minmax(0,1fr))]">
             {/* Week number: opens / creates the week's board. */}
-            <div className="flex flex-col items-center justify-start gap-1 border-r border-line px-0.5 py-2">
+            <DropZone
+              period="WEEK"
+              date={dayKey(monday)}
+              className="flex flex-col items-center justify-start gap-1 border-r border-line px-0.5 py-2"
+              overClassName="bg-accent-soft/70 ring-2 ring-inset ring-accent"
+            >
               {weekEntry ? (
-                <Link
-                  href={`/boards/${weekEntry.id}`}
-                  className="flex w-full flex-col items-center rounded-md bg-accent-soft px-1 py-1 text-[11px] font-semibold text-accent-fg hover:bg-accent/20"
-                  title={t("calendar.openWeek", { week })}
-                  aria-label={t("calendar.openWeek", { week })}
-                >
-                  {t("calendar.weekShort", { week })}
-                  <span className="hidden text-[10px] font-medium tabular-nums sm:block">
-                    {weekEntry.doneCount}/{weekEntry.cardsCount}
-                  </span>
-                </Link>
+                <WeekEntry entry={weekEntry} week={week} canEdit={canEdit} wasDragging={wasDragging} />
               ) : canEdit ? (
                 <button
                   type="button"
@@ -198,7 +384,7 @@ function MonthGrid({ current, weekHref, entryFor, open, pending, canEdit, today 
                   {t("calendar.weekShort", { week })}
                 </Link>
               )}
-            </div>
+            </DropZone>
 
             {days.map((d) => {
               const key = dayKey(d);
@@ -208,12 +394,15 @@ function MonthGrid({ current, weekHref, entryFor, open, pending, canEdit, today 
               const isPending = pending === `DAY:${key}`;
               const label = formatLongDay(d, locale);
               return (
-                <div
+                <DropZone
                   key={key}
+                  period="DAY"
+                  date={key}
                   className={cn(
                     "group relative min-h-[4.25rem] border-r border-line p-1 last:border-r-0 sm:min-h-[6.5rem] sm:p-1.5",
                     outside && "bg-sunken/40",
                   )}
+                  overClassName="bg-accent-soft/70 ring-2 ring-inset ring-accent"
                 >
                   <span
                     className={cn(
@@ -225,20 +414,7 @@ function MonthGrid({ current, weekHref, entryFor, open, pending, canEdit, today 
                   </span>
 
                   {entry ? (
-                    <Link
-                      href={`/boards/${entry.id}`}
-                      className="absolute inset-x-1 bottom-1 top-8 flex flex-col justify-end rounded-md border border-accent/30 bg-accent-soft p-1 text-accent-fg transition-colors hover:border-accent sm:p-1.5"
-                      title={t("calendar.openDay", { date: label })}
-                      aria-label={t("calendar.openDay", { date: label })}
-                    >
-                      <span className="flex items-center gap-1 text-[11px] font-medium">
-                        <KanbanSquare size={12} className="shrink-0" />
-                        <span className="hidden tabular-nums sm:inline">
-                          {entry.cardsCount ? t("calendar.progress", { done: entry.doneCount, total: entry.cardsCount }) : t("calendar.emptyBoard")}
-                        </span>
-                      </span>
-                      {entry.cardsCount > 0 && <Progress entry={entry} className="mt-1 hidden sm:block" />}
-                    </Link>
+                    <DayEntry entry={entry} label={label} canEdit={canEdit} wasDragging={wasDragging} />
                   ) : canEdit ? (
                     <button
                       type="button"
@@ -254,7 +430,7 @@ function MonthGrid({ current, weekHref, entryFor, open, pending, canEdit, today 
                       {isPending ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                     </button>
                   ) : null}
-                </div>
+                </DropZone>
               );
             })}
           </div>
@@ -291,7 +467,9 @@ function WeekList({ monday, entryFor, open, pending, canEdit, today }: CommonPro
           const label = formatLongDay(d, locale);
           return (
             <li key={key}>
+              <DropZone period="DAY" date={key} className="h-full rounded-xl" overClassName="ring-2 ring-accent ring-offset-2 ring-offset-bg">
               <BoardTile
+                movable
                 title={formatDate(d, locale, { weekday: "long" }).replace(/^./, (c) => c.toUpperCase())}
                 subtitle={formatDate(d, locale, { day: "numeric", month: "long" })}
                 isToday={key === today}
@@ -302,11 +480,33 @@ function WeekList({ monday, entryFor, open, pending, canEdit, today }: CommonPro
                 onCreate={() => open("DAY", d)}
                 createLabel={t("calendar.createDay", { date: label })}
               />
+              </DropZone>
             </li>
           );
         })}
       </ul>
     </div>
+  );
+}
+
+/** Grip used to drag a day's board to another day of the week view. */
+function DragHandle({ entry }: { entry: CalendarEntry }) {
+  const { t } = useI18n();
+  const drag = useEntryDrag(entry, true);
+  return (
+    <button
+      ref={drag.ref}
+      {...drag.props}
+      type="button"
+      className={cn(
+        "-mr-1 -mt-0.5 flex h-7 w-6 shrink-0 cursor-grab touch-none select-none items-center justify-center rounded text-faint hover:bg-hover hover:text-fg",
+        drag.isDragging && "opacity-40",
+      )}
+      title={t("calendar.dragHandle")}
+      aria-label={t("calendar.dragHandle")}
+    >
+      <GripVertical size={15} />
+    </button>
   );
 }
 
@@ -321,6 +521,7 @@ function BoardTile({
   createLabel,
   isToday,
   highlight,
+  movable,
 }: {
   title: string;
   subtitle: string;
@@ -332,6 +533,8 @@ function BoardTile({
   createLabel: string;
   isToday?: boolean;
   highlight?: boolean;
+  /** Show a handle to drag the board to another day. */
+  movable?: boolean;
 }) {
   const { t } = useI18n();
   const more = entry ? entry.cardsCount - entry.cards.length : 0;
@@ -343,9 +546,12 @@ function BoardTile({
         highlight && "bg-accent-soft/40",
       )}
     >
-      <div className="min-w-0">
-        <p className={cn("truncate text-sm font-semibold", isToday ? "text-accent-fg" : "text-fg")}>{title}</p>
-        <p className="truncate text-xs text-muted">{subtitle}</p>
+      <div className="flex items-start gap-1">
+        <div className="min-w-0 flex-1">
+          <p className={cn("truncate text-sm font-semibold", isToday ? "text-accent-fg" : "text-fg")}>{title}</p>
+          <p className="truncate text-xs text-muted">{subtitle}</p>
+        </div>
+        {movable && entry && canEdit && <DragHandle entry={entry} />}
       </div>
 
       {entry ? (

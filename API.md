@@ -277,6 +277,9 @@ in their language. Works signed out (login page).
 ### GET /api/boards
 
 List boards owned by the user and boards where the user is a member.
+Day / week boards of a calendar are not listed here (see
+[Board Calendar](#board-calendar)); every board carries `parentId`, `period`
+and `periodStart` (null for a regular board).
 
 **Auth**: token or session
 
@@ -366,6 +369,8 @@ Get a full board with columns, cards, labels, and members.
 Update board name or type. Promoting to TEAM creates an owner membership.
 Turning a TEAM board back into PERSONAL removes every other member and clears
 their assignments on the board. An empty name returns 400.
+A type change also applies to the board's calendar. The type of a day / week
+board cannot be changed on its own (400).
 
 **Auth**: token or session (must be board owner or admin)
 
@@ -377,11 +382,66 @@ their assignments on the board. An empty name returns 400.
 
 ### DELETE /api/boards/{id}
 
-Delete a board and all its data (cascade).
+Delete a board and all its data (cascade), including the day / week boards of
+its calendar.
 
 **Auth**: token or session (must be board owner or admin)
 
 **Response 200**: `{ "ok": true }`
+
+---
+
+## Board Calendar
+
+A board can hold **one board per day and one per week** (e.g. the board
+"Elisa30" gets "Elisa30 — Mardi 24 novembre 2026" and
+"Elisa30 — Semaine 48 · 23 → 29 nov. 2026"). Those day / week boards:
+
+- are named automatically, in the language of the user who creates them;
+- start with a copy of the board's columns and labels (no cards);
+- have the board's owner, type and members. Members are managed for the
+  whole calendar: inviting / removing someone on the board or on any of its
+  day / week boards applies to all of them;
+- are deleted with the board, and don't count toward the `maxBoards` limit.
+
+Weeks start on Monday and are numbered following ISO 8601. Dates are calendar
+days `YYYY-MM-DD` (no time zone).
+
+### GET /api/boards/{id}/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD
+
+Day / week boards whose period starts between `from` and `to` (inclusive, at
+most ~400 days). Defaults to the weeks of the current month.
+
+**Auth**: token or session (board member, or admin read-only)
+
+**Response 200**:
+```json
+{
+  "boards": [
+    { "id": "ck...", "name": "Elisa30 — Mardi 24 novembre 2026", "period": "DAY", "date": "2026-11-24", "cardsCount": 4, "doneCount": 1 },
+    { "id": "ck...", "name": "Elisa30 — Semaine 48 · 23 → 29 nov. 2026", "period": "WEEK", "date": "2026-11-23", "cardsCount": 0, "doneCount": 0 }
+  ]
+}
+```
+
+For a `WEEK`, `date` is the Monday of the week.
+
+### POST /api/boards/{id}/calendar
+
+Open the board of a day or a week, creating it if it does not exist yet. Any
+date of the week can be given for `WEEK`.
+
+**Auth**: token or session (board member)
+
+```json
+{ "period": "DAY", "date": "2026-11-24" }
+```
+
+**Response 201** (created) or **200** (already existed):
+`{ "board": { "id": "ck...", "name": "...", "parentId": "ck...", "period": "DAY", "periodStart": "2026-11-24T00:00:00.000Z", ... }, "created": true }`
+
+Errors: 400 for an invalid period / date, or when `{id}` is itself a day /
+week board.
 
 ---
 
@@ -405,7 +465,7 @@ List board members.
 ### POST /api/boards/{id}/members
 
 Invite a member by userId or email. Only TEAM boards can be shared (400 on a
-personal board). Unknown or deactivated users return 404. The invited user
+personal board). The member gets access to the board's whole calendar. Unknown or deactivated users return 404. The invited user
 gets a notification.
 
 **Auth**: token or session (must be board owner)
@@ -422,7 +482,7 @@ Or: `{ "userId": "ck..." }`
 
 Remove a member. The owner can remove anyone except themself; any member can
 remove **themself** (leave the board). The member's assignments on the board
-are cleared.
+are cleared. This applies to the board's whole calendar.
 
 **Auth**: token or session (board owner, or the member themself)
 

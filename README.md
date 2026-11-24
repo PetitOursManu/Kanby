@@ -38,6 +38,11 @@
 - **Cartes** : titre, description, échéance (en retard / aujourd'hui mis en
   évidence), étiquettes colorées, checklist avec progression, assignation,
   commentaires. Lien direct vers une carte (`/boards/<id>?card=<id>`)
+- **Calendrier** : chaque tableau a une vue *Mois* / *Semaine* où l'on crée en
+  un clic un Kanban par jour ou par semaine. Il se nomme tout seul
+  (« Elisa30 — Mardi 24 novembre 2026 », « Elisa30 — Semaine 48 · 23 → 29 nov.
+  2026 »), reprend les colonnes et étiquettes du tableau et partage ses membres.
+  Flèches ‹ › pour passer au jour (ou à la semaine) suivant
 - **Glisser-déposer** à la souris, au doigt (appui long) et au clavier
   (Espace pour saisir, flèches, Espace pour déposer)
 - **Filtre** des cartes (touche `/`), filtre « Mes cartes »

@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, LogOut, MoreHorizontal, Pencil, Search, Tag, Trash2, User, UserPlus, Users, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Eye, Loader2, LogOut, MoreHorizontal, Pencil, Search, Tag, Trash2, User, UserPlus, Users, X } from "lucide-react";
 import { Kanban } from "@/components/board/Kanban";
 import { CardModal } from "@/components/board/CardModal";
 import { LabelsDialog, MembersDialog, NameDialog } from "@/components/board/BoardDialogs";
@@ -14,19 +15,28 @@ import { useToast } from "@/components/Toast";
 import { apiDelete, apiPatch, apiPost } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
+import { addDays, dayKey, parseDay } from "@/lib/calendar";
 import type { BoardData, CardRow, ColumnRow, CurrentUser, MemberRow } from "@/types/api";
 import type { Label } from "@prisma/client";
+
+/** Set when the board is the board of a day / week in another board's calendar. */
+export type CalendarInfo = { parentId: string; parentName: string; period: "DAY" | "WEEK"; date: string };
 
 export function BoardView({
   board,
   currentUser,
   isOwner,
   canEdit,
+  calendar = null,
+  calendarCount = 0,
 }: {
   board: BoardData;
   currentUser: CurrentUser;
   isOwner: boolean;
   canEdit: boolean;
+  calendar?: CalendarInfo | null;
+  /** Number of day / week boards in this board's calendar. */
+  calendarCount?: number;
 }) {
   const { t } = useI18n();
   const toast = useToast();
@@ -46,6 +56,28 @@ export function BoardView({
   const filterRef = useRef<HTMLInputElement>(null);
 
   const isTeam = type === "TEAM";
+  const calendarHref = calendar
+    ? `/boards/${calendar.parentId}/calendar?view=${calendar.period === "WEEK" ? "week" : "month"}&date=${calendar.date}`
+    : `/boards/${board.id}/calendar`;
+  const [stepping, setStepping] = useState<-1 | 1 | null>(null);
+
+  /** Go to the previous / next day (or week), creating its board if needed. */
+  async function step(dir: -1 | 1) {
+    if (!calendar || stepping) return;
+    setStepping(dir);
+    try {
+      const date = dayKey(addDays(parseDay(calendar.date)!, dir * (calendar.period === "WEEK" ? 7 : 1)));
+      const { board: target } = await apiPost<{ board: { id: string } }>(`/api/boards/${calendar.parentId}/calendar`, {
+        period: calendar.period,
+        date,
+      });
+      router.push(`/boards/${target.id}`);
+      router.refresh();
+    } catch (e) {
+      toast.error(e);
+      setStepping(null);
+    }
+  }
 
   // Keep ?card= in the URL so a card can be shared / opened from a notification.
   const openCard = useCallback((id: string | null) => {
@@ -139,11 +171,16 @@ export function BoardView({
   }
 
   async function deleteBoard() {
-    const ok = await confirm({ title: t("board.deleteBoardConfirm", { name }), message: t("board.deleteBoardHint"), danger: true, confirm: t("board.deleteBoard") });
+    const ok = await confirm({
+      title: t("board.deleteBoardConfirm", { name }),
+      message: calendarCount > 0 ? t("calendar.deleteParentHint") : t("board.deleteBoardHint"),
+      danger: true,
+      confirm: t("board.deleteBoard"),
+    });
     if (!ok) return;
     try {
       await apiDelete(`/api/boards/${board.id}`);
-      router.replace("/boards");
+      router.replace(calendar ? calendarHref : "/boards");
       router.refresh();
     } catch (e) {
       toast.error(e);
@@ -275,6 +312,47 @@ export function BoardView({
           </span>
         )}
 
+        {calendar ? (
+          <div className="flex items-center gap-1">
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => step(-1)}
+                disabled={stepping !== null}
+                className="icon-btn border border-line"
+                aria-label={calendar.period === "WEEK" ? t("calendar.prevWeek") : t("calendar.prevDay")}
+                title={calendar.period === "WEEK" ? t("calendar.prevWeek") : t("calendar.prevDay")}
+              >
+                {stepping === -1 ? <Loader2 size={15} className="animate-spin" /> : <ChevronLeft size={16} />}
+              </button>
+            )}
+            <Link href={calendarHref} className="btn-secondary btn-sm" title={t("calendar.backToCalendar")}>
+              <CalendarDays size={14} /> <span className="hidden sm:inline">{t("calendar.title")}</span>
+            </Link>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => step(1)}
+                disabled={stepping !== null}
+                className="icon-btn border border-line"
+                aria-label={calendar.period === "WEEK" ? t("calendar.nextWeek") : t("calendar.nextDay")}
+                title={calendar.period === "WEEK" ? t("calendar.nextWeek") : t("calendar.nextDay")}
+              >
+                {stepping === 1 ? <Loader2 size={15} className="animate-spin" /> : <ChevronRight size={16} />}
+              </button>
+            )}
+          </div>
+        ) : (
+          <Link
+            href={calendarHref}
+            className="btn-secondary btn-sm"
+            title={calendarCount > 0 ? t("calendar.daysCount", { count: calendarCount }) : t("calendar.openHint")}
+          >
+            <CalendarDays size={14} /> <span className="hidden sm:inline">{t("calendar.open")}</span>
+            {calendarCount > 0 && <span className="rounded-full bg-accent-soft px-1.5 text-[11px] font-semibold tabular-nums text-accent-fg">{calendarCount}</span>}
+          </Link>
+        )}
+
         <label className="relative flex h-8 min-w-0 flex-1 items-center sm:ml-2 sm:w-60 sm:flex-none">
           <Search size={14} className="pointer-events-none absolute left-2.5 text-faint" />
           <input
@@ -357,7 +435,7 @@ export function BoardView({
                       {t("board.renameBoard")}
                     </MenuItem>
                   )}
-                  {isOwner && (
+                  {isOwner && !calendar && (
                     <MenuItem icon={isTeam ? <User size={15} /> : <Users size={15} />} onClick={() => { close(); toggleType(); }}>
                       {isTeam ? t("board.makePersonal") : t("board.makeTeam")}
                     </MenuItem>

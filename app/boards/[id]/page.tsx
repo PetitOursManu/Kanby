@@ -5,6 +5,8 @@ import { getFullBoardForUser } from "@/lib/board-queries";
 import { BoardView } from "@/components/board/BoardView";
 import { AppShell } from "@/components/AppShell";
 import { getServerTranslator } from "@/lib/i18n/server";
+import { prisma } from "@/lib/prisma";
+import { dayKey } from "@/lib/calendar";
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const t = getServerTranslator();
@@ -30,8 +32,27 @@ export default async function BoardPage({ params }: { params: { id: string } }) 
   }
 
   const { board, isOwner, isMember } = result;
+
+  // Day / week board of a calendar: link back to its board and calendar.
+  const parent = board.parentId ? await prisma.board.findUnique({ where: { id: board.parentId }, select: { id: true, name: true } }) : null;
+  const calendar =
+    parent && board.period && board.periodStart
+      ? { parentId: parent.id, parentName: parent.name, period: board.period, date: dayKey(board.periodStart) }
+      : null;
+  const childrenCount = parent ? 0 : await prisma.board.count({ where: { parentId: board.id } });
+  const crumbs = [{ href: "/boards", label: t("nav.boards") }];
+  if (calendar) {
+    crumbs.push(
+      { href: `/boards/${calendar.parentId}`, label: calendar.parentName },
+      {
+        href: `/boards/${calendar.parentId}/calendar?view=${calendar.period === "WEEK" ? "week" : "month"}&date=${calendar.date}`,
+        label: t("calendar.title"),
+      },
+    );
+  }
+
   return (
-    <AppShell active="boards" wide title={board.name} crumbs={[{ href: "/boards", label: t("nav.boards") }]}>
+    <AppShell active="boards" wide title={board.name} crumbs={crumbs}>
       <BoardView
         key={board.id}
         board={board as never}
@@ -44,6 +65,8 @@ export default async function BoardPage({ params }: { params: { id: string } }) 
         }}
         isOwner={isOwner}
         canEdit={isMember}
+        calendar={calendar}
+        calendarCount={childrenCount}
       />
     </AppShell>
   );

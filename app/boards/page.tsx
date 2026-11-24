@@ -9,7 +9,7 @@ const SELECT = {
   name: true,
   type: true,
   updatedAt: true,
-  _count: { select: { cards: true, members: true } },
+  _count: { select: { cards: true, members: true, children: true } },
   cards: { where: { completedAt: { not: null } }, select: { id: true } },
 } as const;
 
@@ -18,9 +18,10 @@ export default async function BoardsPage() {
   const t = getServerTranslator();
 
   const [owned, memberOf] = await Promise.all([
-    prisma.board.findMany({ where: { ownerId: user.id }, orderBy: { updatedAt: "desc" }, select: SELECT }),
+    prisma.board.findMany({ where: { ownerId: user.id, parentId: null }, orderBy: { updatedAt: "desc" }, select: SELECT }),
     prisma.boardMember.findMany({
-      where: { userId: user.id, board: { ownerId: { not: user.id } } },
+      // Day / week boards are reached from their board's calendar.
+      where: { userId: user.id, board: { ownerId: { not: user.id }, parentId: null } },
       select: { role: true, board: { select: { ...SELECT, owner: { select: { displayName: true } } } } },
       orderBy: { board: { updatedAt: "desc" } },
     }),
@@ -34,6 +35,7 @@ export default async function BoardsPage() {
     cardsCount: b._count.cards,
     doneCount: b.cards.length,
     membersCount: b._count.members,
+    calendarCount: b._count.children,
     updatedAt: b.updatedAt.toISOString(),
     ownerName,
   });

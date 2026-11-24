@@ -7,7 +7,10 @@ import { boardLimit } from "@/lib/restrictions";
 
 export const runtime = "nodejs";
 
-/** Boards visible to the user: owned + member-of (owned boards are never repeated in `member`). */
+/**
+ * Boards visible to the user: owned + member-of (owned boards are never repeated in `member`).
+ * Day / week boards of a calendar are not listed here: see /api/boards/:id/calendar.
+ */
 export async function GET(req: NextRequest) {
   const auth = await requireUser(req);
   if ("error" in auth) return auth.error;
@@ -15,12 +18,12 @@ export async function GET(req: NextRequest) {
 
   const [owned, memberOf] = await Promise.all([
     prisma.board.findMany({
-      where: { ownerId: userId },
+      where: { ownerId: userId, parentId: null },
       orderBy: { updatedAt: "desc" },
       include: { _count: { select: { cards: true } } },
     }),
     prisma.boardMember.findMany({
-      where: { userId, board: { ownerId: { not: userId } } },
+      where: { userId, board: { ownerId: { not: userId }, parentId: null } },
       include: { board: { include: { _count: { select: { cards: true } } } } },
       orderBy: { board: { updatedAt: "desc" } },
     }),
@@ -43,8 +46,9 @@ export async function POST(req: NextRequest) {
   const type = body.type === "TEAM" ? "TEAM" : "PERSONAL";
 
   // Restriction set by an administrator (from Kosmy Board): most boards owned.
+  // Day / week boards of a calendar are part of their board and don't count.
   const limit = boardLimit(auth.user);
-  if (limit !== null && (await prisma.board.count({ where: { ownerId: auth.user.id } })) >= limit) {
+  if (limit !== null && (await prisma.board.count({ where: { ownerId: auth.user.id, parentId: null } })) >= limit) {
     return NextResponse.json({ error: "Nombre maximal de tableaux atteint pour votre compte" }, { status: 403 });
   }
 

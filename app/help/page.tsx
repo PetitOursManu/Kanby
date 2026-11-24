@@ -122,6 +122,15 @@ export default async function HelpPage() {
           </ul>
         </Section>
 
+        <Section icon="calendar" title={t("help.calendar")}>
+          <ul className="list-disc space-y-2 pl-5">
+            <li>{t("help.calendarOpen")}</li>
+            <li>{t("help.calendarCreate")}</li>
+            <li>{t("help.calendarShared")}</li>
+            <li>{t("help.calendarNav")}</li>
+          </ul>
+        </Section>
+
         <Section icon="group" title={t("help.teamBoards")}>
           <p>
             {t("help.teamBoardsBody")} <strong>{t("boards.personalFull")}</strong> {t("help.teamBoardsBody2")}{" "}

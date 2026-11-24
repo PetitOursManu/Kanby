@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { KanbanSquare, Plus, User, Users } from "lucide-react";
+import { CalendarDays, KanbanSquare, Plus, User, Users } from "lucide-react";
 import { Modal } from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import { apiPost } from "@/lib/client-api";
@@ -19,6 +19,8 @@ export type BoardSummary = {
   cardsCount: number;
   doneCount: number;
   membersCount: number;
+  /** Day / week boards in the board's calendar. */
+  calendarCount: number;
   updatedAt: string;
   ownerName?: string;
 };
@@ -116,8 +118,13 @@ function BoardCard({ board }: { board: BoardSummary }) {
           <div className="h-full rounded-full bg-accent" style={{ width: `${progress}%` }} />
         </div>
       </div>
-      <p className="mt-3 text-xs text-faint">
+      <p className="mt-3 flex items-center justify-between gap-2 text-xs text-faint">
         <TimeAgo date={board.updatedAt} prefix={(when) => t("boards.updated", { when })} />
+        {board.calendarCount > 0 && (
+          <span className="flex shrink-0 items-center gap-1" title={t("calendar.daysCount", { count: board.calendarCount })}>
+            <CalendarDays size={12} /> <span className="tabular-nums">{board.calendarCount}</span>
+          </span>
+        )}
       </p>
     </Link>
   );

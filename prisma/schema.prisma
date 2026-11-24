@@ -28,6 +28,12 @@ enum BoardRole {
   MEMBER
 }
 
+/// Period covered by a board that belongs to another board's calendar.
+enum BoardPeriod {
+  DAY
+  WEEK
+}
+
 /// Semantic kind of a column. DONE drives the confetti celebration.
 enum ColumnKind {
   TODO
@@ -114,6 +120,16 @@ model Board {
   type      BoardType
   owner     User      @relation("BoardOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId   String
+  /// Calendar: a board can hold one board per day and per week ("Elisa30 —
+  /// Lundi 24 novembre 2026"). Those child boards point to their parent,
+  /// share its owner, type and members, and are deleted with it.
+  parent    Board?    @relation("BoardCalendar", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId  String?
+  children  Board[]   @relation("BoardCalendar")
+  /// DAY or WEEK for a calendar board, null for a regular board.
+  period    BoardPeriod?
+  /// The day (DAY) or the Monday of the week (WEEK) the board covers.
+  periodStart DateTime? @db.Date
   columns   Column[]
   labels    Label[]
   members   BoardMember[]
@@ -122,6 +138,7 @@ model Board {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
+  @@unique([parentId, period, periodStart])
   @@index([ownerId])
   @@index([type])
 }

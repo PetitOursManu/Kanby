@@ -15,6 +15,9 @@ import { useI18n } from "@/lib/i18n/client";
  *  - Focus moves into the dialog and is restored on close; Tab is trapped.
  *  - The panel scrolls normally (no drag gestures on the scroll container).
  */
+/** Open modals, innermost last: only the top one answers Escape and traps Tab. */
+const openModals: symbol[] = [];
+
 export function Modal({
   open,
   onClose,
@@ -40,7 +43,10 @@ export function Modal({
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
+    const me = Symbol("modal");
+    openModals.push(me);
     const onKey = (e: KeyboardEvent) => {
+      if (openModals[openModals.length - 1] !== me) return;
       if (e.key === "Escape") {
         e.stopPropagation();
         onCloseRef.current();
@@ -69,6 +75,7 @@ export function Modal({
       target?.focus({ preventScroll: true });
     });
     return () => {
+      openModals.splice(openModals.indexOf(me), 1);
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = overflow;
       previous?.focus?.({ preventScroll: true });

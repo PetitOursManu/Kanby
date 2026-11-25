@@ -465,6 +465,57 @@ board, now on the original day.
 
 Errors: 400 for an invalid date, or when `{id}` is not a day / week board.
 
+### POST /api/boards/{id}/transfer
+
+Transfer tasks of this board to another day (or week, for a week board) of
+the same calendar — e.g. yesterday's unfinished tasks to today. The target
+board is created if needed. Tasks keep their description, checklist,
+comments and assignee; they land at the end of the column with the same name
+(else the same kind, else the first column); their labels are matched by
+name and created when missing. From the main board, tasks go to a day board.
+
+**Auth**: token or session (board member)
+
+```json
+{ "date": "2026-11-25", "cardIds": ["ck..."] }
+```
+
+Without `cardIds`: every unfinished task (not in a "Done" column).
+
+**Response 200**: `{ "board": { "id": "ck...", "name": "Elisa30 — Mercredi 25 novembre 2026" }, "moved": ["ck...", "ck..."] }`
+
+### POST /api/cards/{id}/transfer
+
+Same, for one task: `{ "date": "2026-11-25" }`.
+
+**Response 200**: `{ "card": { ... }, "board": { "id": "ck...", "name": "..." } }` — 400 when the task is already on that day.
+
+### GET /api/boards/{id}/history[?cardId=…&limit=…]
+
+Date history, newest first (at most 200): tasks transferred (`CARD_MOVED`),
+day / week boards moved (`BOARD_MOVED`), due dates changed (`DUE_DATE`). On a
+main board: its whole calendar; on a day / week board: the changes involving
+it; with `cardId`: the changes of that task.
+
+**Auth**: token or session (board member, or admin read-only)
+
+**Response 200**:
+```json
+{
+  "items": [
+    {
+      "id": "ck...", "kind": "CARD_MOVED", "period": "DAY", "title": "Plonge",
+      "cardId": "ck...", "fromBoardId": "ck...", "toBoardId": "ck...",
+      "from": "2026-11-24", "to": "2026-11-25",
+      "actor": { "id": "ck...", "displayName": "Manu", "avatarUrl": null },
+      "createdAt": "2026-11-25T08:30:00.000Z"
+    }
+  ]
+}
+```
+
+`from` / `to` are `null` for the main board (no date) or for no due date.
+
 ---
 
 ## Board Members

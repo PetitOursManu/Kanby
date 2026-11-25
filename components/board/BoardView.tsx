@@ -3,17 +3,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, ChevronLeft, ChevronRight, Eye, Loader2, LogOut, MoreHorizontal, Pencil, Search, Tag, Trash2, User, UserPlus, Users, X } from "lucide-react";
+import { CalendarClock, CalendarDays, ChevronLeft, Forward, ChevronRight, Eye, Loader2, LogOut, MoreHorizontal, Pencil, Search, Tag, Trash2, User, UserPlus, Users, X } from "lucide-react";
 import { Kanban } from "@/components/board/Kanban";
 import { CardModal } from "@/components/board/CardModal";
 import { LabelsDialog, MembersDialog, NameDialog } from "@/components/board/BoardDialogs";
-import { MoveDateDialog } from "@/components/board/MoveDateDialog";
+import { MoveDateDialog, usePeriodLabel } from "@/components/board/MoveDateDialog";
+import { TransferDialog } from "@/components/board/TransferDialog";
+import { DateHistoryDialog } from "@/components/board/DateHistory";
 import { ConfettiOnDoneDrop } from "@/components/ConfettiOnDoneDrop";
 import { Avatar } from "@/components/Avatar";
 import { Menu, MenuItem, MenuSeparator } from "@/components/Menu";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
-import { apiDelete, apiPatch, apiPost } from "@/lib/client-api";
+import { api, apiDelete, apiPatch, apiPost } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
 import { addDays, dayKey, formatDate, formatWeekRange, isoWeek, parseDay } from "@/lib/calendar";
@@ -23,6 +25,9 @@ import type { Label } from "@prisma/client";
 /** Set when the board is the board of a day / week in another board's calendar. */
 export type CalendarInfo = { parentId: string; parentName: string; period: "DAY" | "WEEK"; date: string };
 
+/** An earlier day (or week) of the calendar that still has unfinished tasks. */
+export type Leftover = { boardId: string; date: string; count: number };
+
 export function BoardView({
   board,
   currentUser,
@@ -30,6 +35,7 @@ export function BoardView({
   canEdit,
   calendar = null,
   calendarCount = 0,
+  leftover = null,
 }: {
   board: BoardData;
   currentUser: CurrentUser;
@@ -38,6 +44,7 @@ export function BoardView({
   calendar?: CalendarInfo | null;
   /** Number of day / week boards in this board's calendar. */
   calendarCount?: number;
+  leftover?: Leftover | null;
 }) {
   const { t, locale } = useI18n();
   const toast = useToast();
@@ -50,10 +57,30 @@ export function BoardView({
   const [columns, setColumns] = useState<ColumnRow[]>(board.columns);
   const [labels, setLabels] = useState<Label[]>(board.labels);
   const [members, setMembers] = useState<MemberRow[]>(board.members);
-  const [openCardId, setOpenCardId] = useState<string | null>(searchParams.get("card"));
+  // Opened from ?card= right after hydration (the dialog only exists in the browser).
+  const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [mine, setMine] = useState(false);
-  const [dialog, setDialog] = useState<null | "members" | "labels" | "rename" | "column" | "date">(null);
+  const [dialog, setDialog] = useState<null | "members" | "labels" | "rename" | "column" | "date" | "transfer" | "history">(null);
+  const periodLabel = usePeriodLabel();
+  // Tasks can be sent to another day once the board is part of a calendar.
+  const transfer = calendar
+    ? { period: calendar.period, date: calendar.date }
+    : calendarCount > 0
+      ? { period: "DAY" as const, date: null }
+      : null;
+  const leftoverKey = leftover ? `kanby.leftover.${board.id}.${leftover.boardId}.${leftover.count}` : null;
+  const [leftoverHidden, setLeftoverHidden] = useState(true);
+  const [takingLeftover, setTakingLeftover] = useState(false);
+  useEffect(() => {
+    let hidden = false;
+    try {
+      hidden = !!leftoverKey && sessionStorage.getItem(leftoverKey) === "1";
+    } catch {
+      /* storage unavailable */
+    }
+    setLeftoverHidden(hidden);
+  }, [leftoverKey]);
   const filterRef = useRef<HTMLInputElement>(null);
 
   const isTeam = type === "TEAM";
@@ -129,6 +156,62 @@ export function BoardView({
       }
     return ids;
   }, [columns, query, mine, currentUser.id]);
+
+  // ---------- Transfers to another day ----------
+  const removeCards = useCallback((ids: string[]) => {
+    const gone = new Set(ids);
+    setColumns((cols) => cols.map((c) => ({ ...c, cards: c.cards.filter((x) => !gone.has(x.id)) })));
+  }, []);
+
+  /** Reload columns and labels after tasks arrived from another board. */
+  async function reloadBoard() {
+    const { board: fresh } = await api<{ board: BoardData }>(`/api/boards/${board.id}`);
+    setColumns(fresh.columns);
+    setLabels(fresh.labels);
+  }
+
+  async function transferMany(date: string, cardIds?: string[]) {
+    try {
+      const { moved } = await apiPost<{ moved: string[] }>(`/api/boards/${board.id}/transfer`, { date, cardIds });
+      removeCards(moved);
+      toast.success(t("transfer.done", { count: moved.length, date: periodLabel(transfer?.period ?? "DAY", date) }));
+      router.refresh();
+      return true;
+    } catch (e) {
+      toast.error(e);
+      return false;
+    }
+  }
+
+  async function takeLeftover() {
+    if (!leftover || !calendar || takingLeftover) return;
+    setTakingLeftover(true);
+    try {
+      const { moved } = await apiPost<{ moved: string[] }>(`/api/boards/${leftover.boardId}/transfer`, { date: calendar.date });
+      await reloadBoard();
+      toast.success(t("transfer.done", { count: moved.length, date: periodLabel(calendar.period, calendar.date) }));
+      setLeftoverHidden(true);
+      router.refresh();
+    } catch (e) {
+      toast.error(e);
+    } finally {
+      setTakingLeftover(false);
+    }
+  }
+
+  function hideLeftover() {
+    setLeftoverHidden(true);
+    try {
+      if (leftoverKey) sessionStorage.setItem(leftoverKey, "1");
+    } catch {
+      /* storage unavailable */
+    }
+  }
+
+  const unfinished = useMemo(
+    () => columns.filter((c) => c.kind !== "DONE").flatMap((c) => c.cards.filter((x) => !x.completedAt).map((x) => ({ id: x.id, title: x.title }))),
+    [columns],
+  );
 
   // ---------- Board-level actions ----------
   async function rename(next: string) {
@@ -450,6 +533,15 @@ export function BoardView({
                     </MenuItem>
                     <MenuSeparator />
                   </div>
+                  {canEdit && transfer && (
+                    <MenuItem icon={<Forward size={15} />} onClick={() => { close(); setDialog("transfer"); }}>
+                      {t("transfer.unfinished")}
+                    </MenuItem>
+                  )}
+                  <MenuItem icon={<CalendarClock size={15} />} onClick={() => { close(); setDialog("history"); }}>
+                    {t("history.open")}
+                  </MenuItem>
+                  <MenuSeparator />
                   {isOwner && (
                     <MenuItem icon={<Pencil size={15} />} onClick={() => { close(); setDialog("rename"); }}>
                       {t("board.renameBoard")}
@@ -488,6 +580,21 @@ export function BoardView({
         </div>
       </div>
 
+      {leftover && calendar && canEdit && !leftoverHidden && (
+        <div className="mx-4 mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-accent/30 bg-accent-soft/60 px-3 py-2 text-[13px] text-fg md:mx-6" role="status">
+          <Forward size={15} className="shrink-0 text-accent-fg" />
+          <span className="min-w-0 flex-1">
+            {t("transfer.leftover", { count: leftover.count, date: periodLabel(calendar.period, leftover.date) })}
+          </span>
+          <button type="button" onClick={takeLeftover} disabled={takingLeftover} className="btn-primary btn-sm">
+            {takingLeftover && <Loader2 size={14} className="animate-spin" />} {t("transfer.takeHere")}
+          </button>
+          <button type="button" onClick={hideLeftover} className="btn-ghost btn-sm">
+            {t("transfer.dismiss")}
+          </button>
+        </div>
+      )}
+
       {visible && (
         <p className="px-4 pb-2 text-xs text-muted md:px-6" role="status">
           {t("board.filterResult", { count: visible.size })} · {t("board.dragDisabledWhileFiltering")}
@@ -509,6 +616,13 @@ export function BoardView({
       {openCardId && (
         <CardModal
           key={openCardId}
+          boardId={board.id}
+          transfer={transfer}
+          onTransferred={(cardId) => {
+            removeCards([cardId]);
+            openCard(null);
+            router.refresh();
+          }}
           cardId={openCardId}
           columns={columns}
           labels={labels}
@@ -560,6 +674,18 @@ export function BoardView({
           setColumns((cols) => cols.map((c) => ({ ...c, cards: c.cards.map((x) => ({ ...x, labels: x.labels.filter((l) => l.label.id !== id) })) })));
         }}
       />
+      {transfer && (
+        <TransferDialog
+          open={dialog === "transfer"}
+          onClose={() => setDialog(null)}
+          title={t("transfer.unfinishedTitle")}
+          period={transfer.period}
+          current={transfer.date}
+          cards={unfinished}
+          onSubmit={transferMany}
+        />
+      )}
+      <DateHistoryDialog open={dialog === "history"} onClose={() => setDialog(null)} boardId={board.id} />
       {calendar && (
         <MoveDateDialog
           open={dialog === "date"}

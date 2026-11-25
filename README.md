@@ -45,6 +45,12 @@
   Flèches ‹ › pour passer au jour (ou à la semaine) suivant. Un Kanban se
   **déplace** vers un autre jour en le glissant dans le calendrier, ou en
   cliquant sur sa date en haut du Kanban (échange possible si le jour est pris)
+- **Reporter des tâches** sur un autre jour : une tâche (bouton *Changer de jour*
+  dans la carte) ou toutes les tâches non terminées d'un jour (menu du Kanban).
+  En ouvrant le Kanban d'aujourd'hui, Kanby propose de reprendre les tâches
+  non terminées de la veille
+- **Historique des dates** : transferts de tâches, déplacements de Kanban et
+  changements d'échéance (dans le calendrier, le menu d'un Kanban et chaque carte)
 - **Glisser-déposer** à la souris, au doigt (appui long) et au clavier
   (Espace pour saisir, flèches, Espace pour déposer)
 - **Filtre** des cartes (touche `/`), filtre « Mes cartes »

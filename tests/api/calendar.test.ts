@@ -195,4 +195,98 @@ describe("calendar (one board per day / per week)", () => {
     expect((await api(`/api/boards/${w.id}/reschedule`, { as: owner, body: { date: "2026-13-01" } })).status).toBe(400);
     expect((await api(`/api/boards/${board.id}/reschedule`, { as: owner, body: { date: "2026-12-10" } })).status).toBe(400);
   });
+
+  it("transfers yesterday's unfinished tasks to today, with their labels", async () => {
+    const owner = await createUser();
+    const { board } = await createBoard(owner, "PERSONAL", "Elisa30");
+    const y = (await open(owner, board.id, "DAY", "2026-11-24")).json.board;
+    const yb = (await api(`/api/boards/${y.id}`, { as: owner })).json.board;
+    const label = (await api("/api/labels", { as: owner, body: { boardId: y.id, name: "Cuisine", color: "#f59e0b" } })).json.label;
+    const a = await createCard(owner, yb.columns[0].id, "Plonge");
+    const b = await createCard(owner, yb.columns[1].id, "Mise en place");
+    const done = await createCard(owner, yb.columns[0].id, "Accueil");
+    await api(`/api/cards/${done.id}/move`, { as: owner, body: { columnId: yb.columns[2].id, index: 0 } });
+    await api(`/api/cards/${a.id}/labels`, { as: owner, body: { labelId: label.id } });
+    await api("/api/checklist", { as: owner, body: { cardId: a.id, text: "Verres" } });
+
+    const r = await api(`/api/boards/${y.id}/transfer`, { body: { date: "2026-11-25" }, headers: { cookie: `${owner.cookie}; kanby_locale=fr` } });
+    expect(r.status).toBe(200);
+    expect(r.json.board.name).toBe("Elisa30 — Mercredi 25 novembre 2026");
+    expect(r.json.moved.sort()).toEqual([a.id, b.id].sort());
+
+    const today = (await api(`/api/boards/${r.json.board.id}`, { as: owner })).json.board;
+    const byCol = Object.fromEntries(today.columns.map((c: any) => [c.name, c.cards.map((x: any) => x.title)]));
+    expect(byCol["À faire"]).toEqual(["Plonge"]);
+    expect(byCol["En cours"]).toEqual(["Mise en place"]);
+    const moved = today.columns[0].cards[0];
+    expect(moved.labels.map((l: any) => l.label.name)).toEqual(["Cuisine"]);
+    expect(moved.labels[0].label.boardId).toBe(today.id);
+    expect(moved._count.checklist).toBe(1);
+
+    // The finished task stays; yesterday's columns are compact again.
+    const after = (await api(`/api/boards/${y.id}`, { as: owner })).json.board;
+    expect(after.columns.flatMap((c: any) => c.cards.map((x: any) => x.title))).toEqual(["Accueil"]);
+
+    // History: whole calendar, the day, and the task.
+    const h = await api(`/api/boards/${board.id}/history`, { as: owner });
+    const moves = h.json.items.filter((i: any) => i.kind === "CARD_MOVED");
+    expect(moves).toHaveLength(2);
+    expect(moves[0]).toMatchObject({ from: "2026-11-24", to: "2026-11-25", period: "DAY" });
+    expect(moves[0].actor.id).toBe(owner.id);
+    expect((await api(`/api/boards/${y.id}/history`, { as: owner })).json.items).toHaveLength(2);
+    const hc = await api(`/api/boards/${today.id}/history?cardId=${a.id}`, { as: owner });
+    expect(hc.json.items.map((i: any) => i.title)).toEqual(["Plonge"]);
+  });
+
+  it("transfers one task (or a choice of tasks), and refuses the same day", async () => {
+    const owner = await createUser();
+    const outsider = await createUser();
+    const { board } = await createBoard(owner, "PERSONAL", "Elisa30");
+    const d = (await open(owner, board.id, "DAY", "2026-11-24")).json.board;
+    const cols = (await api(`/api/boards/${d.id}`, { as: owner })).json.board.columns;
+    const a = await createCard(owner, cols[0].id, "A");
+    const b = await createCard(owner, cols[0].id, "B");
+    const c = await createCard(owner, cols[0].id, "C");
+
+    const one = await api(`/api/cards/${a.id}/transfer`, { as: owner, body: { date: "2026-11-27" } });
+    expect(one.status).toBe(200);
+    expect(one.json.card.boardId).toBe(one.json.board.id);
+    expect((await api(`/api/cards/${a.id}/transfer`, { as: owner, body: { date: "2026-11-27" } })).status).toBe(400);
+    expect((await api(`/api/cards/${b.id}/transfer`, { as: outsider, body: { date: "2026-11-27" } })).status).toBe(403);
+    expect((await api(`/api/cards/${b.id}/transfer`, { as: owner, body: { date: "nope" } })).status).toBe(400);
+
+    const some = await api(`/api/boards/${d.id}/transfer`, { as: owner, body: { date: "2026-11-27", cardIds: [c.id, "unknown"] } });
+    expect(some.json.moved).toEqual([c.id]);
+    expect(await prisma.card.count({ where: { boardId: d.id } })).toBe(1);
+
+    // From the main board too: the task gets a day.
+    const main = (await api(`/api/boards/${board.id}`, { as: owner })).json.board;
+    const m = await createCard(owner, main.columns[0].id, "Sans date");
+    const r = await api(`/api/cards/${m.id}/transfer`, { as: owner, body: { date: "2026-11-27" } });
+    expect(r.json.board.id).toBe(one.json.board.id);
+    const h = (await api(`/api/boards/${board.id}/history?cardId=${m.id}`, { as: owner })).json.items;
+    expect(h[0]).toMatchObject({ kind: "CARD_MOVED", from: null, to: "2026-11-27" });
+  });
+
+  it("records Kanban moves and due date changes in the history", async () => {
+    const owner = await createUser();
+    const { board } = await createBoard(owner, "PERSONAL", "Elisa30");
+    const d = (await open(owner, board.id, "DAY", "2026-11-24")).json.board;
+    await api(`/api/boards/${d.id}/reschedule`, { as: owner, body: { date: "2026-11-26" } });
+    const cols = (await api(`/api/boards/${d.id}`, { as: owner })).json.board.columns;
+    const card = await createCard(owner, cols[0].id, "Commande");
+    await api(`/api/cards/${card.id}`, { as: owner, method: "PATCH", body: { dueDate: "2026-11-28" } });
+    await api(`/api/cards/${card.id}`, { as: owner, method: "PATCH", body: { dueDate: "2026-11-28" } }); // unchanged
+    await api(`/api/cards/${card.id}`, { as: owner, method: "PATCH", body: { dueDate: null } });
+
+    const items = (await api(`/api/boards/${board.id}/history`, { as: owner })).json.items;
+    expect(items.map((i: any) => [i.kind, i.from, i.to])).toEqual([
+      ["DUE_DATE", "2026-11-28", null],
+      ["DUE_DATE", null, "2026-11-28"],
+      ["BOARD_MOVED", "2026-11-24", "2026-11-26"],
+    ]);
+    // History is reserved to members.
+    const outsider = await createUser();
+    expect((await api(`/api/boards/${board.id}/history`, { as: outsider })).status).toBe(403);
+  });
 });

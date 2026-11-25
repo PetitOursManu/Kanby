@@ -15,10 +15,11 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, GripVertical, KanbanSquare, Loader2, Plus } from "lucide-react";
+import { CalendarClock, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, GripVertical, KanbanSquare, Loader2, Plus } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { rescheduleBoard } from "@/components/board/reschedule";
+import { DateHistoryDialog } from "@/components/board/DateHistory";
 import { apiPost } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
@@ -67,6 +68,7 @@ export function CalendarView({
   const [items, setItems] = useState(entries);
   useEffect(() => setItems(entries), [entries]);
   const [dragged, setDragged] = useState<CalendarEntry | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const dragging = useRef(false);
 
   const sensors = useSensors(
@@ -158,7 +160,10 @@ export function CalendarView({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setHistoryOpen(true)} className="btn-secondary btn-sm" title={t("history.hint")}>
+            <CalendarClock size={14} /> <span className="hidden sm:inline">{t("history.open")}</span>
+          </button>
           <div className="flex rounded-lg border border-line bg-surface p-0.5" role="group" aria-label={t("calendar.view")}>
             {(["month", "week"] as const).map((v) => (
               <Link
@@ -214,6 +219,7 @@ export function CalendarView({
           )}
         </DragOverlay>
       </DndContext>
+      <DateHistoryDialog open={historyOpen} onClose={() => setHistoryOpen(false)} boardId={boardId} />
     </div>
   );
 }

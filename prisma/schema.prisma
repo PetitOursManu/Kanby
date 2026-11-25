@@ -71,6 +71,7 @@ model User {
   apiTokens        ApiToken[]
   notifications    Notification[]
   triggeredNotifs  Notification[] @relation("NotificationActor")
+  dateChanges      DateChange[]
 
   @@index([globalRole])
 }
@@ -135,6 +136,8 @@ model Board {
   members   BoardMember[]
   cards     Card[]
   notifications Notification[]
+  /// Date history of the board's calendar (only on the main board).
+  dateChanges DateChange[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -189,6 +192,7 @@ model Card {
   checklist   ChecklistItem[]
   comments    Comment[]
   notifications Notification[]
+  dateChanges DateChange[]
   /// Set when the card is moved into a DONE column.
   completedAt DateTime?
   createdAt   DateTime   @default(now())
@@ -269,4 +273,44 @@ model Notification {
   @@index([userId, read])
   @@index([userId, createdAt])
   @@index([boardId])
+}
+
+enum DateChangeKind {
+  CARD_MOVED
+  BOARD_MOVED
+  DUE_DATE
+}
+
+/// One change of date, kept for the history of a calendar:
+///  - CARD_MOVED: a task transferred to another day (or week) of the calendar,
+///  - BOARD_MOVED: a day / week board moved to another day / week,
+///  - DUE_DATE: the due date of a task changed.
+/// Kept when the task or board is deleted (title is a snapshot); deleted with
+/// the main board.
+model DateChange {
+  id          String         @id @default(cuid())
+  /// Main board of the calendar (the board itself for a regular board).
+  rootBoard   Board          @relation(fields: [rootBoardId], references: [id], onDelete: Cascade)
+  rootBoardId String
+  kind        DateChangeKind
+  /// DAY or WEEK for transfers and board moves, null for due dates.
+  period      BoardPeriod?
+  card        Card?          @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  cardId      String?
+  /// Boards the change went from / to (ids only: they may be deleted later).
+  fromBoardId String?
+  toBoardId   String?
+  /// Task title or board name at the time of the change.
+  title       String
+  /// Day before / after (null = no date: the main board, or no due date).
+  fromDate    DateTime?      @db.Date
+  toDate      DateTime?      @db.Date
+  actor       User?          @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorId     String?
+  createdAt   DateTime       @default(now())
+
+  @@index([rootBoardId, createdAt])
+  @@index([cardId, createdAt])
+  @@index([fromBoardId])
+  @@index([toBoardId])
 }

@@ -6,7 +6,7 @@ import { BoardView } from "@/components/board/BoardView";
 import { AppShell } from "@/components/AppShell";
 import { getServerTranslator } from "@/lib/i18n/server";
 import { prisma } from "@/lib/prisma";
-import { dayKey } from "@/lib/calendar";
+import { addDays, dayKey } from "@/lib/calendar";
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const t = getServerTranslator();
@@ -40,6 +40,24 @@ export default async function BoardPage({ params }: { params: { id: string } }) 
       ? { parentId: parent.id, parentName: parent.name, period: board.period, date: dayKey(board.periodStart) }
       : null;
   const childrenCount = parent ? 0 : await prisma.board.count({ where: { parentId: board.id } });
+
+  // The closest earlier day (or week, within a few weeks) that still has
+  // unfinished tasks: offered to bring them over (e.g. yesterday → today).
+  let leftover: { boardId: string; date: string; count: number } | null = null;
+  if (calendar && board.period && board.periodStart) {
+    const earlier = await prisma.board.findFirst({
+      where: {
+        parentId: board.parentId,
+        period: board.period,
+        periodStart: { lt: board.periodStart, gte: addDays(board.periodStart, board.period === "WEEK" ? -28 : -7) },
+      },
+      orderBy: { periodStart: "desc" },
+      select: { id: true, periodStart: true, _count: { select: { cards: { where: { completedAt: null } } } } },
+    });
+    if (earlier && earlier._count.cards > 0) {
+      leftover = { boardId: earlier.id, date: dayKey(earlier.periodStart!), count: earlier._count.cards };
+    }
+  }
   const crumbs = [{ href: "/boards", label: t("nav.boards") }];
   if (calendar) {
     crumbs.push(
@@ -67,6 +85,7 @@ export default async function BoardPage({ params }: { params: { id: string } }) 
         canEdit={isMember}
         calendar={calendar}
         calendarCount={childrenCount}
+        leftover={leftover}
       />
     </AppShell>
   );

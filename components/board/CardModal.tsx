@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AlignLeft, CalendarDays, Check, CheckSquare, Columns3, MessageSquare, Plus, Tag, Trash2, UserRound, X } from "lucide-react";
+import { AlignLeft, CalendarClock, CalendarDays, Check, CheckSquare, Columns3, Forward, MessageSquare, Plus, Tag, Trash2, UserRound, X } from "lucide-react";
 import { Modal } from "@/components/Modal";
 import { Avatar } from "@/components/Avatar";
 import { LabelChip } from "@/components/board/LabelChip";
@@ -14,6 +14,9 @@ import { useI18n } from "@/lib/i18n/client";
 import { dueState, formatDateTime, toDateInput, timeAgo } from "@/lib/format";
 import type { CardDetail, CardRow, ColumnRow, CurrentUser } from "@/types/api";
 import type { Label } from "@prisma/client";
+import { TransferDialog } from "@/components/board/TransferDialog";
+import { DateHistoryList } from "@/components/board/DateHistory";
+import { usePeriodLabel } from "@/components/board/MoveDateDialog";
 
 type Person = { id: string; displayName: string; avatarUrl: string | null };
 
@@ -29,6 +32,9 @@ function toRow(d: CardDetail): CardRow {
 }
 
 export function CardModal({
+  boardId,
+  transfer = null,
+  onTransferred,
   cardId,
   columns,
   labels,
@@ -42,6 +48,10 @@ export function CardModal({
   onDeleted,
   onLabelCreated,
 }: {
+  boardId: string;
+  /** Set when the task can be transferred to another day / week of a calendar. */
+  transfer?: { period: "DAY" | "WEEK"; date: string | null } | null;
+  onTransferred?: (cardId: string, columnId: string) => void;
   cardId: string;
   columns: Pick<ColumnRow, "id" | "name" | "kind">[];
   labels: Label[];
@@ -68,6 +78,9 @@ export function CardModal({
   const [comment, setComment] = useState("");
   const [labelDraft, setLabelDraft] = useState<{ name: string; color: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [historyCount, setHistoryCount] = useState(0);
+  const periodLabel = usePeriodLabel();
   const titleRef = useRef<HTMLTextAreaElement>(null);
   // Latest card, so async callbacks never write back a stale copy.
   const cardRef = useRef<CardDetail | null>(null);
@@ -600,6 +613,25 @@ export function CardModal({
               )}
             </div>
 
+            {/* Date history of the task (transfers, due date changes). */}
+            <div className={historyCount ? "border-t border-line pt-4" : "hidden"}>
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted">
+                <CalendarClock size={14} /> {t("history.title")}
+              </p>
+              <DateHistoryList boardId={boardId} cardId={card.id} hideTitle onLoaded={setHistoryCount} reloadKey={card.dueDate} />
+            </div>
+
+            {canEdit && transfer && (
+              <button
+                type="button"
+                onClick={() => setTransferOpen(true)}
+                className="btn-secondary btn-sm w-full"
+                title={transfer.period === "WEEK" ? t("transfer.cardWeek") : t("transfer.card")}
+              >
+                <Forward size={14} /> {transfer.period === "WEEK" ? t("transfer.cardWeekShort") : t("transfer.cardShort")}
+              </button>
+            )}
+
             {canEdit && (
               <button type="button" onClick={removeCard} disabled={busy === "delete"} className="btn-danger btn-sm w-full">
                 <Trash2 size={14} /> {t("card.deleteCard")}
@@ -607,6 +639,26 @@ export function CardModal({
             )}
           </aside>
         </div>
+      )}
+      {card && transfer && (
+        <TransferDialog
+          open={transferOpen}
+          onClose={() => setTransferOpen(false)}
+          title={t("transfer.cardTitle")}
+          period={transfer.period}
+          current={transfer.date}
+          onSubmit={async (date) => {
+            try {
+              await apiPost(`/api/cards/${card.id}/transfer`, { date });
+              toast.success(t("transfer.done", { count: 1, date: periodLabel(transfer.period, date) }));
+              onTransferred?.(card.id, card.columnId);
+              return true;
+            } catch (e) {
+              toast.error(e);
+              return false;
+            }
+          }}
+        />
       )}
     </Modal>
   );

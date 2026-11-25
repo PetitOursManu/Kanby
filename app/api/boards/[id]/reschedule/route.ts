@@ -22,7 +22,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const date = parseDay(body.date);
   if (!date) return badRequest("Dates invalides (AAAA-MM-JJ)");
 
-  const result = await rescheduleCalendarBoard(auth.board, date, body.swap === true);
+  const result = await rescheduleCalendarBoard(auth.board, date, body.swap === true, auth.user.id);
   if (!result.ok) {
     return NextResponse.json({ error: "Ce jour a déjà un Kanban", conflict: result.conflict }, { status: 409 });
   }

@@ -4,6 +4,8 @@ import { requireBoardMember } from "@/lib/auth-guard";
 import { notifyBoardMembers } from "@/lib/notify";
 import { CARD_LIST_INCLUDE } from "@/lib/board-queries";
 import { moveCard, compactCards } from "@/lib/ordering";
+import { recordDateChanges } from "@/lib/date-history";
+import { calendarRootId } from "@/lib/calendar-boards";
 import { LIMITS, badRequest, index, notFound, parseDate, readJson, text } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -90,6 +92,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const card = await prisma.card.findUniqueOrThrow({ where: { id: params.id }, include: CARD_LIST_INCLUDE });
 
   // Only notify when something actually changed.
+  // Keep track of due date changes in the date history.
+  if (data.dueDate !== undefined && before && data.dueDate?.getTime() !== before.dueDate?.getTime()) {
+    await recordDateChanges([
+      {
+        rootBoardId: calendarRootId(ctx.board),
+        kind: "DUE_DATE",
+        cardId: params.id,
+        fromBoardId: ctx.board.id,
+        toBoardId: ctx.board.id,
+        title: card.title,
+        fromDate: before.dueDate,
+        toDate: data.dueDate,
+        actorId: ctx.user.id,
+      },
+    ]);
+  }
+
   const contentChanged =
     (data.title !== undefined && data.title !== before?.title) ||
     (data.description !== undefined && data.description !== before?.description) ||

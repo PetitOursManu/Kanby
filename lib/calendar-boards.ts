@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { LIMITS } from "@/lib/validation";
 import { dayKey, movedBoardName, periodBoardName, periodStart, type Period } from "@/lib/calendar";
 import { getTranslator, LOCALES, type Locale, type Translator } from "@/lib/i18n";
+import { recordDateChanges } from "@/lib/date-history";
 
 /** The board whose calendar `board` belongs to (itself for a regular board). */
 export const calendarRootId = (board: Pick<Board, "id" | "parentId">) => board.parentId ?? board.id;
@@ -145,9 +146,9 @@ export type RescheduleResult =
  *
  * When that period already has a board: with `swap`, the two boards trade
  * places; without it, nothing changes and the other board is returned as
- * `conflict`.
+ * `conflict`. Each move is written to the calendar's date history.
  */
-export async function rescheduleCalendarBoard(board: Board, date: Date, swap: boolean): Promise<RescheduleResult> {
+export async function rescheduleCalendarBoard(board: Board, date: Date, swap: boolean, actorId: string | null): Promise<RescheduleResult> {
   if (!board.parentId || !board.period || !board.periodStart) throw new Error("not a calendar board");
   const period = board.period;
   const from = board.periodStart;
@@ -168,6 +169,18 @@ export async function rescheduleCalendarBoard(board: Board, date: Date, swap: bo
       const swapped = other
         ? await tx.board.update({ where: { id: other.id }, data: { periodStart: from, name: rename(other, to, from) } })
         : null;
+      const entry = (b: Board, a: Date, z: Date) => ({
+        rootBoardId: board.parentId!,
+        kind: "BOARD_MOVED" as const,
+        period,
+        fromBoardId: b.id,
+        toBoardId: b.id,
+        title: b.name,
+        fromDate: a,
+        toDate: z,
+        actorId,
+      });
+      await recordDateChanges([entry(moved, from, to), ...(swapped ? [entry(swapped, to, from)] : [])], tx);
       return { ok: true as const, board: moved, swapped };
     });
   } catch (e) {

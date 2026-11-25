@@ -79,6 +79,14 @@ export function isSafeImageUrl(url: string): boolean {
   }
 }
 
+/** Task importance: an integer from 0 (none) to 4 (urgent). */
+export function parsePriority(input: unknown): { value?: number; error?: boolean } {
+  if (input === undefined) return {};
+  if (input === null) return { value: 0 };
+  if (typeof input !== "number" || !Number.isInteger(input) || input < 0 || input > 4) return { error: true };
+  return { value: input };
+}
+
 /** Integer index (non-negative) or undefined. */
 export function index(input: unknown): number | undefined {
   if (typeof input !== "number" || !Number.isFinite(input)) return undefined;

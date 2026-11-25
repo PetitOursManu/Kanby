@@ -310,3 +310,35 @@ describe("user search", () => {
     expect(names).toEqual([`${tag} Beta`]);
   });
 });
+
+describe("task importance (priority)", () => {
+  it("defaults to 0, can be set at creation and changed, from 0 to 4", async () => {
+    const u = await createUser();
+    const { columns } = await createBoard(u);
+    const card = await createCard(u, columns[0].id, "Plain");
+    expect(card.priority).toBe(0);
+
+    const urgent = await api("/api/cards", { as: u, body: { columnId: columns[0].id, title: "Urgent", priority: 4 } });
+    expect(urgent.status).toBe(201);
+    expect(urgent.json.card.priority).toBe(4);
+
+    const r = await api(`/api/cards/${card.id}`, { as: u, method: "PATCH", body: { priority: 3 } });
+    expect(r.json.card.priority).toBe(3);
+    expect((await api(`/api/cards/${card.id}`, { as: u, method: "PATCH", body: { priority: null } })).json.card.priority).toBe(0);
+
+    for (const bad of [5, -1, 1.5, "2"]) {
+      expect((await api(`/api/cards/${card.id}`, { as: u, method: "PATCH", body: { priority: bad } })).status).toBe(400);
+    }
+    expect((await api("/api/cards", { as: u, body: { columnId: columns[0].id, title: "X", priority: 9 } })).status).toBe(400);
+  });
+
+  it("is kept when the task is transferred to another day", async () => {
+    const u = await createUser();
+    const { board } = await createBoard(u, "PERSONAL", "Elisa30");
+    const day = (await api(`/api/boards/${board.id}/calendar`, { as: u, body: { period: "DAY", date: "2026-11-24" } })).json.board;
+    const cols = (await api(`/api/boards/${day.id}`, { as: u })).json.board.columns;
+    const card = (await api("/api/cards", { as: u, body: { columnId: cols[0].id, title: "Plonge", priority: 3 } })).json.card;
+    const r = await api(`/api/cards/${card.id}/transfer`, { as: u, body: { date: "2026-11-25" } });
+    expect(r.json.card.priority).toBe(3);
+  });
+});

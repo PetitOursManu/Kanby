@@ -101,7 +101,7 @@ export type CalendarEntry = {
   cardsCount: number;
   doneCount: number;
   /** First cards of the board (by column, then position), for the week view. */
-  cards: { id: string; title: string; done: boolean }[];
+  cards: { id: string; title: string; done: boolean; priority: number }[];
 };
 
 /** Calendar boards of `parentId` whose period starts between `from` and `to` (inclusive). */
@@ -116,7 +116,7 @@ export async function listCalendarBoards(parentId: string, from: Date, to: Date,
       periodStart: true,
       _count: { select: { cards: true } },
       cards: {
-        select: { id: true, title: true, completedAt: true },
+        select: { id: true, title: true, completedAt: true, priority: true },
         orderBy: [{ column: { order: "asc" } }, { order: "asc" }],
       },
     },
@@ -128,7 +128,7 @@ export async function listCalendarBoards(parentId: string, from: Date, to: Date,
     date: dayKey(b.periodStart!),
     cardsCount: b._count.cards,
     doneCount: b.cards.filter((c) => c.completedAt).length,
-    cards: b.cards.slice(0, previewCards).map((c) => ({ id: c.id, title: c.title, done: c.completedAt !== null })),
+    cards: b.cards.slice(0, previewCards).map((c) => ({ id: c.id, title: c.title, done: c.completedAt !== null, priority: c.priority })),
   }));
 }
 

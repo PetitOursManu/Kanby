@@ -4,6 +4,7 @@ import { memo } from "react";
 import { CalendarDays, MessageSquare } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { LabelChip } from "@/components/board/LabelChip";
+import { PriorityDot } from "@/components/board/PriorityDot";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
 import { dueState, formatDay } from "@/lib/format";
@@ -47,8 +48,9 @@ export const CardItem = memo(function CardItem({
           ))}
         </div>
       )}
-      <p className={cn("break-words text-[13.5px] font-medium leading-snug text-fg", done && "text-muted line-through decoration-1")}>
-        {card.title}
+      <p className={cn("flex gap-2 break-words text-[13.5px] font-medium leading-snug text-fg", done && "text-muted line-through decoration-1")}>
+        {card.priority > 0 && <PriorityDot value={card.priority} className={cn("mt-[5px]", done && "opacity-50")} />}
+        <span className="min-w-0 flex-1">{card.title}</span>
       </p>
       {hasMeta && (
         <div className="mt-2.5 flex items-center gap-3 text-xs text-muted">

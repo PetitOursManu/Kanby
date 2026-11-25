@@ -546,6 +546,7 @@ export const en: Record<string, string> = {
   "api.dayTaken": "This day already has a Kanban",
   "api.taskAlreadyThere": "The task is already on that day",
   "api.invalidCardIds": "Invalid cardIds",
+  "api.invalidPriority": "Invalid importance (0 to 4)",
   "api.invalidActive": "Invalid active value",
 
   // Admin in Kosmy Board (/api/kosmy-board/admin, protocol kosmy.board-admin.v1)
@@ -754,4 +755,15 @@ export const en: Record<string, string> = {
   "history.by": "by {name}",
   "history.loading": "Loading…",
   "history.hint": "Task transfers, Kanban moves and due date changes.",
+
+  // Task importance (small colored square)
+  "help.priority": "Importance:",
+  "help.priorityBody": "in the card, pick Low, Medium, High or Urgent. A small colored square (blue, yellow, orange, red) appears before the task title.",
+  "priority.label": "Importance",
+  "priority.none": "None",
+  "priority.low": "Low",
+  "priority.medium": "Medium",
+  "priority.high": "High",
+  "priority.urgent": "Urgent",
+  "priority.title": "Importance: {name}",
 };

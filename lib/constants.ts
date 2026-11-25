@@ -11,6 +11,23 @@ export const LABEL_COLORS = [
   { key: "gray", value: "#64748b" },
 ];
 
+/**
+ * Importance of a task, shown as a small colored square. 0 = none (no square).
+ * Stored as Card.priority.
+ */
+export const PRIORITIES = [
+  { value: 1, key: "low", color: "#3380fc" },
+  { value: 2, key: "medium", color: "#f59e0b" },
+  { value: 3, key: "high", color: "#f97316" },
+  { value: 4, key: "urgent", color: "#f43f5e" },
+] as const;
+export const MAX_PRIORITY = 4;
+
+/** The importance level of a priority value, or null for "none". */
+export function priorityOf(value: number | null | undefined) {
+  return PRIORITIES.find((p) => p.value === value) ?? null;
+}
+
 /** Cookie name holding the session JWT. */
 export const SESSION_COOKIE = "kanby_session";
 

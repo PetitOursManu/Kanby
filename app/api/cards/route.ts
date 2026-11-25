@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireBoardMember } from "@/lib/auth-guard";
 import { CARD_LIST_INCLUDE } from "@/lib/board-queries";
-import { LIMITS, badRequest, notFound, readJson, text } from "@/lib/validation";
+import { LIMITS, badRequest, notFound, readJson, text, parsePriority } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  const body = await readJson<{ columnId: string; title: string }>(req);
+  const body = await readJson<{ columnId: string; title: string; priority: number }>(req);
   if (!body) return badRequest("Requête invalide");
   const title = text(body.title, LIMITS.cardTitle, { required: true });
   if (typeof body.columnId !== "string" || title.error) {
@@ -20,6 +20,9 @@ export async function POST(req: NextRequest) {
   const auth = await requireBoardMember(req, column.boardId);
   if ("error" in auth) return auth.error;
 
+  const priority = parsePriority(body.priority);
+  if (priority.error) return badRequest("Importance invalide (0 à 4)");
+
   const maxOrder = await prisma.card.aggregate({ where: { columnId: column.id }, _max: { order: true } });
   const order = (maxOrder._max.order ?? -1) + 1;
 
@@ -29,6 +32,7 @@ export async function POST(req: NextRequest) {
       boardId: column.boardId,
       title: title.value!,
       order,
+      priority: priority.value ?? 0,
       completedAt: column.kind === "DONE" ? new Date() : null,
     },
     include: CARD_LIST_INCLUDE,

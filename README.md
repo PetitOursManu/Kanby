@@ -49,6 +49,9 @@
   dans la carte) ou toutes les tâches non terminées d'un jour (menu du Kanban).
   En ouvrant le Kanban d'aujourd'hui, Kanby propose de reprendre les tâches
   non terminées de la veille
+- **Importance** des tâches : aucune, basse, moyenne, haute ou urgente, choisie
+  dans la carte et affichée par un petit carré de couleur (bleu, jaune,
+  orange, rouge). Le filtre la reconnaît (« urgente »…)
 - **Historique des dates** : transferts de tâches, déplacements de Kanban et
   changements d'échéance (dans le calendrier, le menu d'un Kanban et chaque carte)
 - **Glisser-déposer** à la souris, au doigt (appui long) et au clavier

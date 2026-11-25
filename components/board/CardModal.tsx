@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AlignLeft, CalendarClock, CalendarDays, Check, CheckSquare, Columns3, Forward, MessageSquare, Plus, Tag, Trash2, UserRound, X } from "lucide-react";
+import { AlignLeft, CalendarClock, Flag, CalendarDays, Check, CheckSquare, Columns3, Forward, MessageSquare, Plus, Tag, Trash2, UserRound, X } from "lucide-react";
 import { Modal } from "@/components/Modal";
 import { Avatar } from "@/components/Avatar";
 import { LabelChip } from "@/components/board/LabelChip";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
-import { LABEL_COLORS } from "@/lib/constants";
+import { LABEL_COLORS, PRIORITIES } from "@/lib/constants";
 import { api, apiDelete, apiPatch, apiPost } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
@@ -132,11 +132,18 @@ export function CardModal({
     }
   }
 
-  async function patch(body: { title?: string; description?: string | null; dueDate?: string | null }) {
+  async function patch(body: { title?: string; description?: string | null; dueDate?: string | null; priority?: number }) {
     if (!card) return;
     await run(`patch:${Object.keys(body).join(",")}`, async () => {
       const { card: row } = await apiPatch<{ card: CardRow }>(`/api/cards/${card.id}`, body);
-      update((c) => ({ ...c, title: row.title, description: row.description, dueDate: row.dueDate, updatedAt: row.updatedAt }));
+      update((c) => ({
+        ...c,
+        title: row.title,
+        description: row.description,
+        dueDate: row.dueDate,
+        priority: row.priority,
+        updatedAt: row.updatedAt,
+      }));
     });
   }
 
@@ -481,6 +488,36 @@ export function CardModal({
                   </option>
                 ))}
               </select>
+            </Field>
+
+            <Field icon={<Flag size={14} />} label={t("priority.label")}>
+              <div className="flex flex-wrap gap-1" role="radiogroup" aria-label={t("priority.label")}>
+                {[{ value: 0, key: "none", color: null as string | null }, ...PRIORITIES].map((p) => {
+                  const on = card.priority === p.value;
+                  return (
+                    <button
+                      key={p.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      disabled={!canEdit || busy === "patch:priority"}
+                      onClick={() => !on && patch({ priority: p.value })}
+                      title={t(`priority.${p.key}`)}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-colors disabled:cursor-default",
+                        on ? "border-accent bg-accent-soft text-accent-fg" : "border-line text-muted hover:bg-hover hover:text-fg",
+                      )}
+                    >
+                      {p.color ? (
+                        <span className="h-2.5 w-2.5 rounded-[3px]" style={{ backgroundColor: p.color }} />
+                      ) : (
+                        <span className="h-2.5 w-2.5 rounded-[3px] border border-dashed border-line-strong" />
+                      )}
+                      {t(`priority.${p.key}`)}
+                    </button>
+                  );
+                })}
+              </div>
             </Field>
 
             {people.length > 0 && (

@@ -184,6 +184,9 @@ model Card {
   description String?
   /// Optional due date — used by the widget summary.
   dueDate     DateTime?
+  /// Importance: 0 = none, 1 = low, 2 = medium, 3 = high, 4 = urgent
+  /// (shown as a small colored square).
+  priority    Int        @default(0)
   /// Sort index within the column.
   order       Int
   assignee    User?      @relation("CardAssignee", fields: [assigneeId], references: [id])

@@ -119,6 +119,9 @@ export default async function HelpPage() {
             <li>
               <strong>{t("help.checklist")}</strong> {t("help.checklistBody")}
             </li>
+            <li>
+              <strong>{t("help.priority")}</strong> {t("help.priorityBody")}
+            </li>
           </ul>
         </Section>
 

@@ -654,10 +654,16 @@ Update card fields and/or move to a different column.
   "title": "Updated title",
   "description": "New description",
   "dueDate": "2026-07-01T12:00:00.000Z",
+  "priority": 3,
   "columnId": "ck_target_column",
   "order": 2
 }
 ```
+
+`priority` is the task's importance, shown as a small colored square:
+`0` none, `1` low, `2` medium, `3` high, `4` urgent (`null` = 0; anything
+else returns 400). It can also be given when creating a card
+(`POST /api/cards`).
 
 `columnId` must belong to the same board (400 otherwise). `order` is the
 **target index** in the column; the other cards of both columns are re-indexed

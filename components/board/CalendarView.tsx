@@ -20,6 +20,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { rescheduleBoard } from "@/components/board/reschedule";
 import { DateHistoryDialog } from "@/components/board/DateHistory";
+import { PriorityDot } from "@/components/board/PriorityDot";
 import { apiPost } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
@@ -580,7 +581,8 @@ function BoardTile({
                 >
                   {c.done && <Check size={9} strokeWidth={3} />}
                 </span>
-                <span className={cn("line-clamp-2", c.done ? "text-faint line-through" : "text-fg")}>{c.title}</span>
+                <span className={cn("line-clamp-2 min-w-0 flex-1", c.done ? "text-faint line-through" : "text-fg")}>{c.title}</span>
+                {c.priority > 0 && <PriorityDot value={c.priority} size={8} className={cn("mt-1", c.done && "opacity-50")} />}
               </li>
             ))}
             {more > 0 && <li className="text-xs text-muted">{t("calendar.moreCards", { count: more })}</li>}

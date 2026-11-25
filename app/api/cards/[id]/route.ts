@@ -6,7 +6,7 @@ import { CARD_LIST_INCLUDE } from "@/lib/board-queries";
 import { moveCard, compactCards } from "@/lib/ordering";
 import { recordDateChanges } from "@/lib/date-history";
 import { calendarRootId } from "@/lib/calendar-boards";
-import { LIMITS, badRequest, index, notFound, parseDate, readJson, text } from "@/lib/validation";
+import { LIMITS, badRequest, index, notFound, parseDate, parsePriority, readJson, text } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
@@ -51,12 +51,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     title: string;
     description: string | null;
     dueDate: string | null;
+    priority: number | null;
     order: number;
     columnId: string;
   }>(req);
   if (!body) return badRequest("Requête invalide");
 
-  const data: { title?: string; description?: string | null; dueDate?: Date | null } = {};
+  const data: { title?: string; description?: string | null; dueDate?: Date | null; priority?: number } = {};
   const title = text(body.title, LIMITS.cardTitle);
   if (title.error) return badRequest(title.error === "too_long" ? "Titre trop long" : "Titre requis");
   if (title.value) data.title = title.value;
@@ -73,6 +74,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (d.error) return badRequest("Date invalide");
     data.dueDate = d.value ?? null;
   }
+
+  const priority = parsePriority(body.priority);
+  if (priority.error) return badRequest("Importance invalide (0 à 4)");
+  if (priority.value !== undefined) data.priority = priority.value;
 
   // Validate a move before writing anything.
   let move: { columnId: string; index: number } | null = null;
@@ -112,7 +117,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const contentChanged =
     (data.title !== undefined && data.title !== before?.title) ||
     (data.description !== undefined && data.description !== before?.description) ||
-    (data.dueDate !== undefined && data.dueDate?.getTime() !== before?.dueDate?.getTime());
+    (data.dueDate !== undefined && data.dueDate?.getTime() !== before?.dueDate?.getTime()) ||
+    (data.priority !== undefined && data.priority !== before?.priority);
   if (moved || contentChanged) {
     await notifyBoardMembers({
       req,

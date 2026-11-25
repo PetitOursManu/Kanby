@@ -17,6 +17,7 @@ import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import { api, apiDelete, apiPatch, apiPost } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
+import { priorityOf } from "@/lib/constants";
 import { useI18n } from "@/lib/i18n/client";
 import { addDays, dayKey, formatDate, formatWeekRange, isoWeek, parseDay } from "@/lib/calendar";
 import type { BoardData, CardRow, ColumnRow, CurrentUser, MemberRow } from "@/types/api";
@@ -150,12 +151,13 @@ export function BoardView({
           !q ||
           card.title.toLowerCase().includes(q) ||
           card.labels.some(({ label }) => label.name.toLowerCase().includes(q)) ||
+          (card.priority > 0 && t(`priority.${priorityOf(card.priority)!.key}`).toLowerCase().includes(q)) ||
           (card.assignee?.displayName.toLowerCase().includes(q) ?? false);
         const matchMine = !mine || card.assigneeId === currentUser.id;
         if (matchText && matchMine) ids.add(card.id);
       }
     return ids;
-  }, [columns, query, mine, currentUser.id]);
+  }, [columns, query, mine, currentUser.id, t]);
 
   // ---------- Transfers to another day ----------
   const removeCards = useCallback((ids: string[]) => {
